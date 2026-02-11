@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Play, Pause, SkipForward, Download, Atom } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const quantumPresets = [
   { name: "Particle in a Box", eq: "ψₙ(x) = √(2/L) sin(nπx/L)" },
@@ -19,10 +20,124 @@ const quantumPresets = [
 
 const symbols = ["ℏ", "ω", "ψ", "∇", "i", "∂", "Ĥ", "⟨", "⟩", "σ", "†", "⊗"];
 
+// Generate quantum data for presets
+function generateQuantumData(preset: string, n: number = 1) {
+  const points: { x: number; psi: number; prob: number; potential?: number }[] = [];
+  const L = 1;
+  const N = 200;
+
+  switch (preset) {
+    case "Particle in a Box":
+      for (let i = 0; i <= N; i++) {
+        const x = (i / N) * L;
+        const psi = Math.sqrt(2 / L) * Math.sin(n * Math.PI * x / L);
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)) });
+      }
+      break;
+    case "Harmonic Oscillator": {
+      // Hermite-Gaussian functions
+      for (let i = 0; i <= N; i++) {
+        const x = -4 + (8 * i / N);
+        let hermite: number;
+        switch (n) {
+          case 1: hermite = 1; break;
+          case 2: hermite = 2 * x; break;
+          case 3: hermite = 4 * x * x - 2; break;
+          default: hermite = 8 * x * x * x - 12 * x;
+        }
+        const psi = hermite * Math.exp(-x * x / 2);
+        const potential = 0.5 * x * x;
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)), potential: parseFloat(potential.toFixed(4)) });
+      }
+      break;
+    }
+    case "Free Particle":
+      for (let i = 0; i <= N; i++) {
+        const x = -5 + (10 * i / N);
+        const k = n;
+        const psi = Math.cos(k * x); // Real part of e^(ikx)
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: 1 }); // |e^ikx|^2 = 1
+      }
+      break;
+    case "Step Potential": {
+      const V0 = 2;
+      const E = 1.5;
+      for (let i = 0; i <= N; i++) {
+        const x = -5 + (10 * i / N);
+        const potential = x >= 0 ? V0 : 0;
+        let psi: number;
+        if (x < 0) {
+          psi = Math.cos(Math.sqrt(2 * E) * x);
+        } else {
+          const kappa = Math.sqrt(2 * Math.abs(V0 - E));
+          psi = Math.exp(-kappa * x);
+        }
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)), potential: parseFloat(potential.toFixed(4)) });
+      }
+      break;
+    }
+    case "Delta Potential":
+      for (let i = 0; i <= N; i++) {
+        const x = -5 + (10 * i / N);
+        const psi = Math.exp(-Math.abs(x));
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)) });
+      }
+      break;
+    case "Finite Well": {
+      const a = 2;
+      for (let i = 0; i <= N; i++) {
+        const x = -5 + (10 * i / N);
+        const potential = Math.abs(x) < a ? -3 : 0;
+        let psi: number;
+        if (Math.abs(x) < a) {
+          psi = Math.cos(n * Math.PI * x / (2 * a));
+        } else {
+          psi = Math.cos(n * Math.PI / 2) * Math.exp(-Math.abs(x - (x > 0 ? a : -a)));
+        }
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)), potential: parseFloat(potential.toFixed(4)) });
+      }
+      break;
+    }
+    default:
+      for (let i = 0; i <= N; i++) {
+        const x = -5 + (10 * i / N);
+        const psi = Math.exp(-x * x / 2) * Math.cos(3 * x);
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: parseFloat((psi * psi).toFixed(6)) });
+      }
+  }
+  return points;
+}
+
+function getEnergyLevels(preset: string): string[] {
+  switch (preset) {
+    case "Particle in a Box":
+      return ["E₁ = π²ℏ²/(2mL²)", "E₂ = 4π²ℏ²/(2mL²)", "E₃ = 9π²ℏ²/(2mL²)", "Eₙ = n²π²ℏ²/(2mL²)"];
+    case "Harmonic Oscillator":
+      return ["E₀ = ½ℏω", "E₁ = 3/2 ℏω", "E₂ = 5/2 ℏω", "Eₙ = (n+½)ℏω"];
+    case "Free Particle":
+      return ["E = ℏ²k²/(2m)", "Continuous spectrum", "No bound states"];
+    default:
+      return ["Select a preset to see energy levels"];
+  }
+}
+
 const QuantumSolver = () => {
   const [input, setInput] = useState("");
   const [playing, setPlaying] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [quantumN, setQuantumN] = useState(1);
+
+  const graphData = useMemo(() => {
+    if (!activePreset) return null;
+    return generateQuantumData(activePreset, quantumN);
+  }, [activePreset, quantumN]);
+
+  const energyLevels = useMemo(() => {
+    if (!activePreset) return [];
+    return getEnergyLevels(activePreset);
+  }, [activePreset]);
+
+  const hasPotential = graphData?.some(d => d.potential !== undefined);
 
   return (
     <PageLayout>
@@ -77,7 +192,7 @@ const QuantumSolver = () => {
                 {quantumPresets.map(p => (
                   <button
                     key={p.name}
-                    onClick={() => { setActivePreset(p.name); setInput(p.eq); }}
+                    onClick={() => { setActivePreset(p.name); setInput(p.eq); setQuantumN(1); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                       activePreset === p.name
                         ? "bg-primary/15 border border-primary/30 text-primary"
@@ -90,19 +205,73 @@ const QuantumSolver = () => {
                 ))}
               </div>
             </GlassCard>
+
+            {/* Quantum number selector */}
+            {activePreset && (
+              <GlassCard>
+                <h2 className="text-sm font-semibold text-foreground mb-3">Quantum Number n</h2>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4].map(n => (
+                    <Button
+                      key={n}
+                      size="sm"
+                      variant={quantumN === n ? "default" : "outline"}
+                      onClick={() => setQuantumN(n)}
+                      className={quantumN === n ? "bg-primary text-primary-foreground" : "border-border"}
+                    >
+                      n={n}
+                    </Button>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
           </div>
 
           {/* Right: Output */}
           <div className="lg:col-span-3 space-y-4">
             <GlassCard className="min-h-[300px]">
-              <h2 className="text-sm font-semibold text-foreground mb-3">Visualization</h2>
-              <div className="rounded-lg border border-border/50 bg-secondary/20 h-64 flex items-center justify-center">
-                <div className="text-center">
-                  <Atom className="h-12 w-12 text-primary/30 mx-auto mb-3" strokeWidth={1} />
-                  <p className="text-sm text-muted-foreground">Select a preset or enter an equation to visualize</p>
+              <h2 className="text-sm font-semibold text-foreground mb-3">
+                Wavefunction ψ(x) {activePreset && `— ${activePreset} (n=${quantumN})`}
+              </h2>
+              {graphData ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={graphData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="x" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--secondary))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="psi" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="ψ(x)" />
+                    <Line type="monotone" dataKey="prob" stroke="#22d3ee" strokeWidth={1.5} dot={false} name="|ψ|²" strokeDasharray="4 2" />
+                    {hasPotential && <Line type="monotone" dataKey="potential" stroke="#f59e0b" strokeWidth={1} dot={false} name="V(x)" strokeDasharray="6 3" />}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="rounded-lg border border-border/50 bg-secondary/20 h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <Atom className="h-12 w-12 text-primary/30 mx-auto mb-3" strokeWidth={1} />
+                    <p className="text-sm text-muted-foreground">Select a preset or enter an equation to visualize</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </GlassCard>
+
+            {/* Energy Levels */}
+            {energyLevels.length > 0 && activePreset && (
+              <GlassCard>
+                <h2 className="text-sm font-semibold text-foreground mb-3">Energy Levels</h2>
+                <div className="space-y-1.5">
+                  {energyLevels.map((e, i) => (
+                    <div key={i} className="text-sm font-mono text-primary/90 px-3 py-1.5 rounded bg-primary/5 border border-primary/10">
+                      {e}
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
 
             {/* TDSE Controls */}
             <GlassCard>
