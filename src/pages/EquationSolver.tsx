@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Play, Download, RotateCcw, ChevronRight } from "lucide-react";
+import { Play, RotateCcw, ChevronRight } from "lucide-react";
 import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
+import PhysicsBackground from "@/components/PhysicsBackground";
+import AnimatedSteps from "@/components/AnimatedSteps";
 
 const diffPresets = [
   { name: "Legendre Equation", eq: "(1-x²)y'' - 2xy' + l(l+1)y = 0" },
@@ -30,6 +32,107 @@ const integralPresets = [
 
 const matrixOps = ["Determinant", "Inverse", "Eigenvalues", "Diagonalization", "Hermitian Check", "Unitary Check", "Matrix Exp"];
 
+const solutions: Record<string, { equation: string; steps: string[]; solution: string; explanation: string }> = {
+  "First-order ODE": {
+    equation: "y' + P(x)y = Q(x)",
+    steps: [
+      "Identify the form y' + P(x)y = Q(x) — Linear First-Order ODE",
+      "Calculate integrating factor: μ(x) = e^(∫P(x)dx)",
+      "Multiply both sides by μ(x): μ(x)y' + μ(x)P(x)y = μ(x)Q(x)",
+      "Left side becomes d/dx[μ(x)·y] — exact derivative",
+      "Integrate both sides: μ(x)·y = ∫μ(x)Q(x)dx + C",
+      "Solve for y: y = (1/μ(x))·[∫μ(x)Q(x)dx + C]",
+    ],
+    solution: "y(x) = e^(-∫P(x)dx) · [∫Q(x)·e^(∫P(x)dx)dx + C]",
+    explanation: "First-order linear ODEs are solved using the integrating factor method. This exponential factor transforms the equation into an exact derivative, allowing direct integration to find the general solution.",
+  },
+  "Second-order ODE": {
+    equation: "y'' + py' + qy = 0 (Homogeneous, constant coefficients)",
+    steps: [
+      "Assume solution form y = e^(rx)",
+      "Calculate derivatives: y' = re^(rx), y'' = r²e^(rx)",
+      "Substitute into ODE: r²e^(rx) + pre^(rx) + qe^(rx) = 0",
+      "Factor out e^(rx) ≠ 0: r² + pr + q = 0 — characteristic equation",
+      "Apply quadratic formula: r = (-p ± √(p²-4q))/2",
+      "Case 1 — Distinct real roots (r₁ ≠ r₂): y = C₁e^(r₁x) + C₂e^(r₂x)",
+      "Case 2 — Repeated root (r₁ = r₂ = r): y = (C₁ + C₂x)e^(rx)",
+      "Case 3 — Complex roots (α ± βi): y = e^(αx)[C₁cos(βx) + C₂sin(βx)]",
+    ],
+    solution: "y(x) = C₁e^(r₁x) + C₂e^(r₂x), where r₁,r₂ are roots of r² + pr + q = 0",
+    explanation: "Second-order linear ODEs with constant coefficients reduce to an algebraic characteristic equation. The discriminant determines whether solutions are exponential, polynomial-exponential, or oscillatory.",
+  },
+  "Legendre ODE": {
+    equation: "(1-x²)y'' - 2xy' + l(l+1)y = 0",
+    steps: [
+      "Recognize as Legendre's equation with parameter l",
+      "Singular points at x = ±1 — use Frobenius/series method",
+      "Assume power series: y = Σ aₖxᵏ",
+      "Substitute and match coefficients to get recurrence relation",
+      "For integer l, series terminates → Legendre polynomials Pₗ(x)",
+      "P₀(x) = 1, P₁(x) = x, P₂(x) = (3x²-1)/2, P₃(x) = (5x³-3x)/2",
+      "Second solution Qₗ(x) is Legendre function of second kind (singular at x=±1)",
+    ],
+    solution: "y(x) = C₁Pₗ(x) + C₂Qₗ(x), where Pₗ are Legendre polynomials",
+    explanation: "Legendre's equation appears when solving Laplace's equation in spherical coordinates. Legendre polynomials form a complete orthogonal set on [-1,1] and are fundamental in multipole expansions and angular momentum theory.",
+  },
+  "Bessel ODE": {
+    equation: "x²y'' + xy' + (x²-n²)y = 0",
+    steps: [
+      "Recognize as Bessel's equation of order n",
+      "Regular singular point at x = 0 — apply Frobenius method",
+      "Try series y = x^s Σ aₖxᵏ → indicial equation gives s = ±n",
+      "First solution: Jₙ(x) = Σ (-1)ᵏ(x/2)^(n+2k) / [k! Γ(n+k+1)]",
+      "Second solution: Yₙ(x) — Bessel function of second kind (singular at x=0)",
+      "Both Jₙ and Yₙ are oscillatory for large x with decaying amplitude",
+      "General solution: y(x) = C₁Jₙ(x) + C₂Yₙ(x)",
+    ],
+    solution: "y(x) = C₁Jₙ(x) + C₂Yₙ(x), where Jₙ, Yₙ are Bessel functions",
+    explanation: "Bessel's equation arises in cylindrical coordinate problems — vibrating membranes, wave propagation in fibers, heat conduction in cylinders. Bessel functions oscillate and decay, analogous to damped sinusoids.",
+  },
+  "Heat Equation": {
+    equation: "∂u/∂t = α∇²u",
+    steps: [
+      "Use separation of variables: u(x,t) = X(x)·T(t)",
+      "Substitute: X·T' = α·X''·T → divide by αXT",
+      "T'/(αT) = X''/X = -λ (separation constant)",
+      "Spatial ODE: X'' + λX = 0 → X = A sin(√λ x) + B cos(√λ x)",
+      "Temporal ODE: T' + αλT = 0 → T = Ce^(-αλt) — exponential decay!",
+      "Boundary conditions (e.g. X(0)=X(L)=0) quantize λₙ = (nπ/L)²",
+      "General solution: u(x,t) = Σ Bₙ sin(nπx/L) e^(-α(nπ/L)²t)",
+    ],
+    solution: "u(x,t) = Σ Bₙ sin(nπx/L) exp(-α(nπ/L)²t)",
+    explanation: "The heat equation models diffusion processes. Higher-frequency modes decay exponentially faster, so any initial temperature profile smooths toward equilibrium. The thermal diffusivity α controls the rate.",
+  },
+  "Wave Equation": {
+    equation: "∂²u/∂t² = c²∇²u",
+    steps: [
+      "Use separation of variables: u(x,t) = X(x)·T(t)",
+      "Substitute: X·T'' = c²X''·T → T''/(c²T) = X''/X = -λ",
+      "Spatial: X'' + λX = 0 → X = A sin(√λ x) + B cos(√λ x)",
+      "Temporal: T'' + c²λT = 0 → T = C cos(ωt) + D sin(ωt), ω = c√λ",
+      "Standing wave: uₙ = sin(nπx/L)·[Aₙcos(ωₙt) + Bₙsin(ωₙt)]",
+      "D'Alembert's general solution: u(x,t) = f(x-ct) + g(x+ct)",
+      "f and g represent right- and left-traveling waves at speed c",
+    ],
+    solution: "u(x,t) = f(x-ct) + g(x+ct)",
+    explanation: "The wave equation describes vibrating strings, sound, and electromagnetic waves. Unlike heat, wave solutions preserve shape — energy propagates without dissipation at speed c.",
+  },
+  "Laplace Equation": {
+    equation: "∇²u = 0",
+    steps: [
+      "In 2D Cartesian: ∂²u/∂x² + ∂²u/∂y² = 0",
+      "Separation: u(x,y) = X(x)·Y(y) → X''/X = -Y''/Y = λ",
+      "If λ > 0: X oscillates, Y grows/decays exponentially",
+      "X = A sin(√λ x) + B cos(√λ x)",
+      "Y = C sinh(√λ y) + D cosh(√λ y)",
+      "Boundary conditions fix eigenvalues λₙ = (nπ/L)²",
+      "u(x,y) = Σ [Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)",
+    ],
+    solution: "u(x,y) = Σ [Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)",
+    explanation: "Laplace's equation governs steady-state heat, electrostatics, and potential flow. Solutions (harmonic functions) satisfy the mean value property — the value at any point equals the average over surrounding points.",
+  },
+};
+
 const EquationSolver = () => {
   const [equation, setEquation] = useState("");
   const [linearResult, setLinearResult] = useState<string | null>(null);
@@ -41,8 +144,8 @@ const EquationSolver = () => {
   );
   const [matrixResult, setMatrixResult] = useState<string | null>(null);
   const [diffEqInput, setDiffEqInput] = useState("");
-  const [diffResult, setDiffResult] = useState<string | null>(null);
   const [selectedDiffType, setSelectedDiffType] = useState<string | null>(null);
+  const [diffSolution, setDiffSolution] = useState<typeof solutions[string] | null>(null);
 
   const updateMatrix = (r: number, c: number, val: string) => {
     const copy = matrixValues.map(row => [...row]);
@@ -94,16 +197,13 @@ const EquationSolver = () => {
           steps.push(`${variable} = ${rounded}`);
           setLinearResult(`${variable} = ${rounded}`);
 
-          // Try to detect y=mx+c pattern for graphing
           try {
             const f0 = (() => { const s: Record<string, number> = {}; s[variable] = 0; return math.evaluate(right, s) as number; })();
             const f1 = (() => { const s: Record<string, number> = {}; s[variable] = 1; return math.evaluate(right, s) as number; })();
-            // Check linearity
             const f2 = (() => { const s: Record<string, number> = {}; s[variable] = 2; return math.evaluate(right, s) as number; })();
             const m1 = f1 - f0;
             const m2 = f2 - f1;
             if (Math.abs(m1 - m2) < 1e-8) {
-              // It's linear! Plot it as y = mx + c
               steps.push(`Slope (m) = ${parseFloat(m1.toFixed(6))}`);
               steps.push(`y-intercept (c) = ${parseFloat(f0.toFixed(6))}`);
               steps.push(`To find c: set ${variable} = 0 → y = ${parseFloat(f0.toFixed(6))}`);
@@ -118,17 +218,14 @@ const EquationSolver = () => {
           const equal = Math.abs(Number(leftVal) - Number(rightVal)) < 1e-10;
           setLinearResult(equal ? "✓ Equation is TRUE" : "✗ Equation is FALSE");
         } else if (uniqueVars.length === 2) {
-          // Two-variable linear equation — plot as y = f(x)
           steps.push(`Variables: ${uniqueVars.join(", ")}`);
           const yVar = uniqueVars.find(v => v === "y") || uniqueVars[0];
           const xVar = uniqueVars.find(v => v !== yVar) || uniqueVars[1];
           steps.push(`Treating ${yVar} as dependent, ${xVar} as independent`);
           
-          // Try to evaluate as linear
           try {
             const expr = `${left} - (${right})`;
             const simplified = math.simplify(math.parse(expr));
-            // Evaluate at two points to get slope
             const evalAt = (xVal: number) => {
               const s: Record<string, number> = {};
               s[xVar] = xVal;
@@ -197,8 +294,7 @@ const EquationSolver = () => {
           break;
         case "Eigenvalues": {
           const eig = math.eigs(M);
-          const values = (eig as any).values;
-          result = `Eigenvalues: ${math.format(values, { precision: 4 })}`;
+          result = `Eigenvalues: ${math.format((eig as any).values, { precision: 4 })}`;
           break;
         }
         case "Diagonalization": {
@@ -221,10 +317,9 @@ const EquationSolver = () => {
           result = norm < 1e-6 ? "✓ Matrix is Unitary (orthogonal)" : `✗ Matrix is NOT Unitary (‖MMᵀ - I‖ = ${norm.toFixed(6)})`;
           break;
         }
-        case "Matrix Exp": {
+        case "Matrix Exp":
           result = `e^A = \n${math.format(math.expm(M), { precision: 4 })}`;
           break;
-        }
         default:
           result = "Operation not implemented.";
       }
@@ -236,149 +331,35 @@ const EquationSolver = () => {
 
   const solveDiff = () => {
     if (!selectedDiffType) {
-      setDiffResult("Please select an equation type first.");
+      setDiffSolution(null);
       return;
     }
-
-    const solutions: Record<string, { equation: string; steps: string[]; solution: string; explanation: string }> = {
-      "First-order ODE": {
-        equation: "y' + P(x)y = Q(x)",
-        steps: [
-          "Step 1: Identify the form y' + P(x)y = Q(x) (Linear First-Order ODE)",
-          "Step 2: Calculate integrating factor: μ(x) = e^(∫P(x)dx)",
-          "Step 3: Multiply both sides by μ(x): μ(x)y' + μ(x)P(x)y = μ(x)Q(x)",
-          "Step 4: Left side becomes d/dx[μ(x)y]",
-          "Step 5: Integrate both sides: μ(x)y = ∫μ(x)Q(x)dx + C",
-          "Step 6: Solve for y: y = (1/μ(x))[∫μ(x)Q(x)dx + C]"
-        ],
-        solution: "y(x) = e^(-∫P(x)dx) · [∫Q(x)·e^(∫P(x)dx)dx + C]",
-        explanation: "First-order linear ODEs are solved using the integrating factor method. This exponential factor transforms the equation into an exact derivative form, allowing direct integration."
-      },
-      "Second-order ODE": {
-        equation: "y'' + py' + qy = 0 (Homogeneous, constant coefficients)",
-        steps: [
-          "Step 1: Assume solution form y = e^(rx)",
-          "Step 2: Calculate derivatives: y' = re^(rx), y'' = r²e^(rx)",
-          "Step 3: Substitute into ODE: r²e^(rx) + pre^(rx) + qe^(rx) = 0",
-          "Step 4: Factor out e^(rx): e^(rx)[r² + pr + q] = 0",
-          "Step 5: Solve characteristic equation: r² + pr + q = 0",
-          "Step 6: Using quadratic formula: r = (-p ± √(p²-4q))/2",
-          "Step 7: Case 1 (r₁ ≠ r₂): y = C₁e^(r₁x) + C₂e^(r₂x)",
-          "Step 8: Case 2 (r₁ = r₂): y = (C₁ + C₂x)e^(r₁x)"
-        ],
-        solution: "y(x) = C₁e^(r₁x) + C₂e^(r₂x), where r₁,r₂ are roots of r² + pr + q = 0",
-        explanation: "Second-order linear ODEs with constant coefficients are solved by assuming exponential solutions. The characteristic equation determines the form of the general solution."
-      },
-      "Legendre ODE": {
-        equation: "(1-x²)y'' - 2xy' + l(l+1)y = 0",
-        steps: [
-          "Step 1: Recognize as Legendre's equation with parameter l",
-          "Step 2: This is a regular singular point ODE at x = ±1",
-          "Step 3: Solutions are Legendre polynomials Pₗ(x) and Qₗ(x)",
-          "Step 4: Compute first few polynomials:",
-          "       P₀(x) = 1",
-          "       P₁(x) = x",
-          "       P₂(x) = (3x² - 1)/2",
-          "       P₃(x) = (5x³ - 3x)/2",
-          "Step 5: General solution: y(x) = C₁Pₗ(x) + C₂Qₗ(x)"
-        ],
-        solution: "y(x) = C₁Pₗ(x) + C₂Qₗ(x), where Pₗ are Legendre polynomials",
-        explanation: "Legendre's equation appears in solving Laplace's equation in spherical coordinates. Legendre polynomials are orthogonal and widely used in physics and engineering."
-      },
-      "Bessel ODE": {
-        equation: "x²y'' + xy' + (x²-n²)y = 0",
-        steps: [
-          "Step 1: Recognize as Bessel's equation of order n",
-          "Step 2: Regular singular point at x = 0",
-          "Step 3: Try Frobenius series: y = x^s Σ aₖx^k",
-          "Step 4: Indicial equation gives s = ±n",
-          "Step 5: First linearly independent solution: Jₙ(x) (Bessel function of first kind)",
-          "Step 6: Second solution: Yₙ(x) (Bessel function of second kind, unbounded at x=0)",
-          "Step 7: General solution: y(x) = C₁Jₙ(x) + C₂Yₙ(x)"
-        ],
-        solution: "y(x) = C₁Jₙ(x) + C₂Yₙ(x), where Jₙ, Yₙ are Bessel functions",
-        explanation: "Bessel's equation appears in cylindrical coordinate problems. Bessel functions oscillate and decay, fundamental in vibrations, wave propagation, and heat conduction in cylinders."
-      },
-      "Heat Equation": {
-        equation: "∂u/∂t = α∇²u (Heat conduction)",
-        steps: [
-          "Step 1: Use separation of variables: u(x,t) = X(x)T(t)",
-          "Step 2: Substitute into PDE: X(x)T'(t) = αX''(x)T(t)",
-          "Step 3: Divide by αX(x)T(t): (1/α)·(T'/T) = X''/X = -λ (separation constant)",
-          "Step 4: Spatial equation: X'' + λX = 0 → X(x) = A sin(√λ x) + B cos(√λ x)",
-          "Step 5: Temporal equation: T' + αλT = 0 → T(t) = Ce^(-αλt)",
-          "Step 6: Apply boundary conditions to find λₙ and coefficients",
-          "Step 7: Sum over all modes: u(x,t) = Σ Bₙ sin(nπx/L) e^(-α(nπ/L)²t)"
-        ],
-        solution: "u(x,t) = Σ Bₙ sin(nπx/L) exp(-α(nπ/L)²t), where Bₙ = (2/L)∫₀ᴸ f(x)sin(nπx/L)dx",
-        explanation: "The heat equation models temperature diffusion. Solutions show how initial temperature distribution spreads and smooths over time, with exponential decay of higher-frequency modes."
-      },
-      "Wave Equation": {
-        equation: "∂²u/∂t² = c²∇²u (Wave propagation)",
-        steps: [
-          "Step 1: Use separation of variables: u(x,t) = X(x)T(t)",
-          "Step 2: Substitute: X(x)T''(t) = c²X''(x)T(t)",
-          "Step 3: Separate: T''/c²T = X''/X = -λ",
-          "Step 4: Spatial: X'' + λX = 0 → X(x) = A sin(√λ x) + B cos(√λ x)",
-          "Step 5: Temporal: T'' + c²λT = 0 → T(t) = C cos(ωt) + D sin(ωt), ω = c√λ",
-          "Step 6: Standing wave solution: u(x,t) = sin(nπx/L)cos(nπct/L + φ)",
-          "Step 7: D'Alembert's general solution: u(x,t) = f(x-ct) + g(x+ct)"
-        ],
-        solution: "u(x,t) = f(x-ct) + g(x+ct), or u = Σ[Aₙcos(nπct/L) + Bₙsin(nπct/L)]sin(nπx/L)",
-        explanation: "The wave equation describes vibrating strings, sound waves, and electromagnetic waves. Solutions are superpositions of left and right-traveling waves with no damping."
-      },
-      "Laplace Equation": {
-        equation: "∇²u = 0 (Steady-state, no time dependence)",
-        steps: [
-          "Step 1: In 2D Cartesian: ∂²u/∂x² + ∂²u/∂y² = 0",
-          "Step 2: Use separation: u(x,y) = X(x)Y(y)",
-          "Step 3: Separate: X''/X = -Y''/Y = λ",
-          "Step 4: Spatial solutions: X(x) = A sin(√λ x) + B cos(√λ x)",
-          "Step 5: Y-equation: Y'' - λY = 0 → Y(y) = C sinh(√λ y) + D cosh(√λ y)",
-          "Step 6: Apply boundary conditions to find λₙ",
-          "Step 7: General solution (rectangular domain):",
-          "       u(x,y) = Σ[Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)"
-        ],
-        solution: "u(x,y) = Σ[Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)",
-        explanation: "Laplace's equation governs steady-state heat, electrostatics, and fluid flow. Solutions are harmonic functions with no sources/sinks and represent equilibrium states."
-      }
-    };
-
-    const selected = solutions[selectedDiffType];
-    if (!selected) {
-      setDiffResult("Solution method not available for this type.");
+    const sol = solutions[selectedDiffType];
+    if (!sol) {
+      setDiffSolution(null);
       return;
     }
-
-    const output = `
-📋 EQUATION: ${selected.equation}
-
-${selected.steps.map(s => s).join("\n")}
-
-✅ FINAL ANSWER:
-${selected.solution}
-
-💡 EXPLANATION:
-${selected.explanation}
-    `.trim();
-
-    setDiffResult(output);
+    // Trigger re-render of AnimatedSteps with new key
+    setDiffSolution(null);
+    setTimeout(() => setDiffSolution(sol), 50);
   };
 
   return (
     <PageLayout>
-      <div className="container px-4 py-12">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <div className="relative container px-4 py-12">
+        <PhysicsBackground />
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative z-10">
           <h1 className="text-3xl sm:text-4xl font-bold mb-2">
             Equation <span className="text-gradient">Solver</span>
           </h1>
           <p className="text-muted-foreground text-sm mb-8">
-            Solve linear, differential, and matrix equations with step-by-step solutions.
+            Solve linear, differential, and matrix equations with animated step-by-step solutions.
           </p>
         </motion.div>
 
-        <Tabs defaultValue="linear" className="space-y-6">
-          <TabsList className="bg-secondary/50 border border-border/50 p-1 rounded-xl">
+        <Tabs defaultValue="linear" className="space-y-6 relative z-10">
+          <TabsList className="glass-card !p-1 !rounded-xl border-glass-border/30">
             <TabsTrigger value="linear" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Linear</TabsTrigger>
             <TabsTrigger value="differential" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Differential</TabsTrigger>
             <TabsTrigger value="matrix" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Matrix</TabsTrigger>
@@ -387,7 +368,7 @@ ${selected.explanation}
 
           {/* Linear */}
           <TabsContent value="linear">
-            <GlassCard>
+            <GlassCard glow>
               <h2 className="text-lg font-semibold mb-4 text-foreground">Linear Equation Solver</h2>
               <div className="flex gap-3 mb-6">
                 <Input
@@ -410,17 +391,28 @@ ${selected.explanation}
                 ))}
               </div>
 
-              <div className="mt-6 rounded-lg border border-border/50 bg-secondary/30 p-6">
+              <div className="mt-6 glass-card !p-6">
                 {linearResult ? (
                   <div className="space-y-2">
                     {linearSteps.map((step, i) => (
-                      <div key={i} className="text-sm text-muted-foreground font-mono">
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.15 }}
+                        className="text-sm text-muted-foreground font-mono"
+                      >
                         <span className="text-primary/50 mr-2">Step {i + 1}:</span> {step}
-                      </div>
+                      </motion.div>
                     ))}
-                    <div className="mt-4 pt-4 border-t border-border/50 text-lg font-mono font-bold text-primary">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: linearSteps.length * 0.15 }}
+                      className="mt-4 pt-4 border-t border-border/50 text-lg font-mono font-bold text-primary"
+                    >
                       {linearResult}
-                    </div>
+                    </motion.div>
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground text-sm">
@@ -439,18 +431,28 @@ ${selected.explanation}
 
           {/* Differential */}
           <TabsContent value="differential">
-            <GlassCard>
+            <GlassCard glow>
               <h2 className="text-lg font-semibold mb-4 text-foreground">Differential Equation Solver</h2>
-              <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                {["First-order ODE", "Second-order ODE", "Legendre ODE", "Bessel ODE", "Heat Equation", "Wave Equation", "Laplace Equation"].map(t => (
-                  <Button
+              <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                {Object.keys(solutions).map((t, i) => (
+                  <motion.div
                     key={t}
-                    variant="outline"
-                    className={`justify-start border-border ${selectedDiffType === t ? "bg-primary/15 border-primary/30 text-primary" : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"}`}
-                    onClick={() => setSelectedDiffType(t)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
                   >
-                    {t}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start border-border transition-all duration-300 ${
+                        selectedDiffType === t
+                          ? "bg-primary/15 border-primary/40 text-primary glow-border"
+                          : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                      }`}
+                      onClick={() => { setSelectedDiffType(t); setDiffSolution(null); }}
+                    >
+                      {t}
+                    </Button>
+                  </motion.div>
                 ))}
               </div>
 
@@ -466,19 +468,26 @@ ${selected.explanation}
                   <Button onClick={solveDiff} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                     <Play size={14} /> Solve
                   </Button>
-                  <Button variant="outline" className="gap-2 border-border" onClick={() => { setDiffResult(null); setSelectedDiffType(null); setDiffEqInput(""); }}>
+                  <Button variant="outline" className="gap-2 border-border" onClick={() => { setDiffSolution(null); setSelectedDiffType(null); setDiffEqInput(""); }}>
                     <RotateCcw size={14} /> Reset
                   </Button>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-lg border border-border/50 bg-secondary/30 p-6">
-                {diffResult ? (
-                  <pre className="text-sm font-mono text-primary whitespace-pre-wrap">{diffResult}</pre>
+              <div className="mt-6">
+                {diffSolution ? (
+                  <AnimatedSteps
+                    equation={diffSolution.equation}
+                    steps={diffSolution.steps}
+                    solution={diffSolution.solution}
+                    explanation={diffSolution.explanation}
+                  />
                 ) : (
-                  <p className="text-center text-muted-foreground text-sm">
-                    Select an equation type, enter your equation, and solve.
-                  </p>
+                  <div className="glass-card !p-6">
+                    <p className="text-center text-muted-foreground text-sm">
+                      Select an equation type and click Solve to see animated derivation.
+                    </p>
+                  </div>
                 )}
               </div>
             </GlassCard>
@@ -486,7 +495,7 @@ ${selected.explanation}
 
           {/* Matrix */}
           <TabsContent value="matrix">
-            <GlassCard>
+            <GlassCard glow>
               <h2 className="text-lg font-semibold mb-4 text-foreground">Matrix Solver</h2>
 
               <div className="flex items-center gap-3 mb-6">
@@ -529,9 +538,15 @@ ${selected.explanation}
                 ))}
               </div>
 
-              <div className="mt-6 rounded-lg border border-border/50 bg-secondary/30 p-6">
+              <div className="mt-6 glass-card !p-6">
                 {matrixResult ? (
-                  <pre className="text-sm font-mono text-primary whitespace-pre-wrap">{matrixResult}</pre>
+                  <motion.pre
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-sm font-mono text-primary whitespace-pre-wrap"
+                  >
+                    {matrixResult}
+                  </motion.pre>
                 ) : (
                   <p className="text-center text-muted-foreground text-sm">
                     Enter matrix values and select an operation.
@@ -543,28 +558,32 @@ ${selected.explanation}
 
           {/* Presets */}
           <TabsContent value="presets">
-            <GlassCard className="mb-6">
+            <GlassCard glow className="mb-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Differential Equation Presets</h2>
               <p className="text-sm text-muted-foreground mb-4">Classic differential equation templates</p>
               <div className="grid sm:grid-cols-2 gap-3">
-                {diffPresets.map(p => (
-                  <GlassCard key={p.name} hover className="cursor-pointer !p-4" onClick={() => { setSelectedDiffType(p.name.replace(" Equation", "")); setDiffEqInput(p.eq); }}>
-                    <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
-                    <p className="font-mono text-primary text-xs">{p.eq}</p>
-                  </GlassCard>
+                {diffPresets.map((p, i) => (
+                  <motion.div key={p.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                    <GlassCard hover className="cursor-pointer !p-4" onClick={() => { setSelectedDiffType(p.name.replace(" Equation", " ODE").replace("Heat ODE", "Heat Equation").replace("Wave ODE", "Wave Equation").replace("Laplace ODE", "Laplace Equation").replace("Helmholtz ODE", "Helmholtz Equation")); setDiffEqInput(p.eq); }}>
+                      <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
+                      <p className="font-mono text-primary text-xs">{p.eq}</p>
+                    </GlassCard>
+                  </motion.div>
                 ))}
               </div>
             </GlassCard>
 
-            <GlassCard className="mb-6">
+            <GlassCard glow className="mb-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Integral Presets</h2>
               <p className="text-sm text-muted-foreground mb-4">Common integral formulas and transforms</p>
               <div className="grid sm:grid-cols-2 gap-3">
-                {integralPresets.map(p => (
-                  <GlassCard key={p.name} hover className="cursor-pointer !p-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
-                    <p className="font-mono text-primary text-xs">{p.eq}</p>
-                  </GlassCard>
+                {integralPresets.map((p, i) => (
+                  <motion.div key={p.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                    <GlassCard hover className="cursor-pointer !p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
+                      <p className="font-mono text-primary text-xs">{p.eq}</p>
+                    </GlassCard>
+                  </motion.div>
                 ))}
               </div>
             </GlassCard>
