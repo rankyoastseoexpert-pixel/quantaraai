@@ -10,13 +10,22 @@ import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
 
-const presets = [
-  { name: "Schrödinger (TDSE)", eq: "iℏ ∂Ψ/∂t = ĤΨ" },
-  { name: "Schrödinger (TISE)", eq: "Ĥψ = Eψ" },
+const diffPresets = [
   { name: "Legendre Equation", eq: "(1-x²)y'' - 2xy' + l(l+1)y = 0" },
   { name: "Bessel Equation", eq: "x²y'' + xy' + (x²-n²)y = 0" },
   { name: "Heat Equation", eq: "∂u/∂t = α∇²u" },
   { name: "Wave Equation", eq: "∂²u/∂t² = c²∇²u" },
+  { name: "Laplace Equation", eq: "∇²u = 0" },
+  { name: "Helmholtz Equation", eq: "∇²f + k²f = 0" },
+];
+
+const integralPresets = [
+  { name: "Definite Integral", eq: "∫₀¹ x² dx = 1/3" },
+  { name: "Gaussian Integral", eq: "∫₋∞^∞ e^(-x²) dx = √π" },
+  { name: "Trigonometric", eq: "∫₀^π sin(x) dx = 2" },
+  { name: "Integration by Parts", eq: "∫ u dv = uv - ∫ v du" },
+  { name: "Fourier Transform", eq: "F(k) = ∫ f(x) e^(-2πikx) dx" },
+  { name: "Laplace Transform", eq: "F(s) = ∫₀^∞ f(t) e^(-st) dt" },
 ];
 
 const matrixOps = ["Determinant", "Inverse", "Eigenvalues", "Diagonalization", "Hermitian Check", "Unitary Check", "Matrix Exp"];
@@ -422,10 +431,23 @@ const EquationSolver = () => {
           {/* Presets */}
           <TabsContent value="presets">
             <GlassCard className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground mb-2">Equation Presets</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Differential Equation Presets</h2>
               <p className="text-sm text-muted-foreground mb-4">Classic differential equation templates</p>
               <div className="grid sm:grid-cols-2 gap-3">
-                {presets.map(p => (
+                {diffPresets.map(p => (
+                  <GlassCard key={p.name} hover className="cursor-pointer !p-4" onClick={() => { setSelectedDiffType(p.name.replace(" Equation", "")); setDiffEqInput(p.eq); }}>
+                    <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
+                    <p className="font-mono text-primary text-xs">{p.eq}</p>
+                  </GlassCard>
+                ))}
+              </div>
+            </GlassCard>
+
+            <GlassCard className="mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Integral Presets</h2>
+              <p className="text-sm text-muted-foreground mb-4">Common integral formulas and transforms</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {integralPresets.map(p => (
                   <GlassCard key={p.name} hover className="cursor-pointer !p-4">
                     <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
                     <p className="font-mono text-primary text-xs">{p.eq}</p>

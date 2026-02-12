@@ -4,9 +4,203 @@ import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Play, Pause, SkipForward, Download, Atom } from "lucide-react";
+import { Play, Pause, SkipForward, Download, Atom, BookOpen, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
+// ── Quantum equation knowledge base ──
+interface QuantumEquationInfo {
+  name: string;
+  equation: string;
+  explanation: string[];
+  solution: string[];
+  physicalMeaning: string;
+  solutionMethod: string;
+}
+
+const quantumKnowledge: Record<string, QuantumEquationInfo> = {
+  tdse: {
+    name: "Time-Dependent Schrödinger Equation (TDSE)",
+    equation: "iℏ ∂ψ/∂t = Ĥψ",
+    explanation: [
+      "This is the fundamental equation of quantum mechanics describing how quantum states evolve in time.",
+      "iℏ is the imaginary unit (i) multiplied by the reduced Planck constant (ℏ = h/2π ≈ 1.055 × 10⁻³⁴ J·s).",
+      "∂ψ/∂t is the partial time derivative of the wavefunction ψ(x,t).",
+      "Ĥ is the Hamiltonian operator: Ĥ = -ℏ²/(2m) ∂²/∂x² + V(x) (kinetic + potential energy).",
+      "ψ(x,t) is the wavefunction — its square modulus |ψ|² gives the probability density of finding the particle.",
+      "The equation is first-order in time and linear in ψ — superposition principle holds.",
+      "For a free particle (V=0): ψ(x,t) = Ae^(i(kx - ωt)) where E = ℏω and p = ℏk.",
+    ],
+    solution: [
+      "General method: Separation of variables ψ(x,t) = φ(x)·T(t)",
+      "Time part: T(t) = e^(-iEt/ℏ)",
+      "Spatial part satisfies TISE: Ĥφ = Eφ",
+      "General solution: ψ(x,t) = Σ cₙ φₙ(x) e^(-iEₙt/ℏ)",
+      "For particle in a box: ψₙ(x,t) = √(2/L) sin(nπx/L) e^(-iEₙt/ℏ)",
+      "where Eₙ = n²π²ℏ²/(2mL²)",
+      "Probability density: |ψ(x,t)|² — may oscillate in time for superposition states",
+      "Expectation values: ⟨x⟩ = ∫ ψ* x ψ dx, ⟨p⟩ = ∫ ψ* (-iℏ∂/∂x) ψ dx",
+    ],
+    physicalMeaning: "Governs the time evolution of all non-relativistic quantum systems. It is the quantum analog of Newton's second law.",
+    solutionMethod: "Separation of variables → TISE for spatial part, exponential decay for time part.",
+  },
+  tise: {
+    name: "Time-Independent Schrödinger Equation (TISE)",
+    equation: "Ĥψ = Eψ  →  -ℏ²/(2m) d²ψ/dx² + V(x)ψ = Eψ",
+    explanation: [
+      "This is an eigenvalue equation: the Hamiltonian operator Ĥ acts on ψ to give energy E times ψ.",
+      "Ĥ = -ℏ²/(2m) d²/dx² + V(x) is the Hamiltonian (kinetic + potential energy operator).",
+      "ψ(x) is the stationary state wavefunction — does not depend on time.",
+      "E is the energy eigenvalue — only specific discrete values are allowed (quantization).",
+      "This is a second-order linear ODE in ψ.",
+      "Boundary conditions determine allowed energy levels (e.g., ψ → 0 at walls).",
+      "The linearity means: if ψ₁ and ψ₂ are solutions, then aψ₁ + bψ₂ is also a solution.",
+    ],
+    solution: [
+      "Particle in a box (V=0 inside, ∞ outside):",
+      "  ψₙ(x) = √(2/L) sin(nπx/L), n = 1, 2, 3, ...",
+      "  Eₙ = n²π²ℏ²/(2mL²)",
+      "Harmonic oscillator (V = ½mω²x²):",
+      "  ψₙ(x) = Hₙ(αx) e^(-α²x²/2), α = √(mω/ℏ)",
+      "  Eₙ = (n + ½)ℏω",
+      "Free particle (V = 0):",
+      "  ψ(x) = Ae^(ikx) + Be^(-ikx), E = ℏ²k²/(2m)",
+      "  Continuous energy spectrum (no quantization)",
+    ],
+    physicalMeaning: "Determines the allowed stationary states and energy levels of a quantum system. It is the eigenvalue equation for energy.",
+    solutionMethod: "Solve the ODE with appropriate boundary conditions. Method depends on V(x): analytic for simple potentials, numerical for complex ones.",
+  },
+  expectation: {
+    name: "Expectation Value",
+    equation: "⟨A⟩ = ∫ ψ* Â ψ dx",
+    explanation: [
+      "The expectation value ⟨A⟩ gives the average result of measuring observable A in state ψ.",
+      "ψ* is the complex conjugate of the wavefunction.",
+      "Â is the quantum operator corresponding to observable A.",
+      "The integral is over all space (or the relevant domain).",
+      "Linearity: Â(aψ₁ + bψ₂) = aÂψ₁ + bÂψ₂",
+      "For position: ⟨x⟩ = ∫ ψ* x ψ dx",
+      "For momentum: ⟨p⟩ = ∫ ψ* (-iℏ d/dx) ψ dx",
+      "For energy: ⟨H⟩ = ∫ ψ* Ĥ ψ dx = E (for energy eigenstates)",
+    ],
+    solution: [
+      "For particle in a box (n=1):",
+      "  ⟨x⟩ = L/2 (particle most likely at center)",
+      "  ⟨x²⟩ = L²/3 - L²/(2n²π²)",
+      "  ⟨p⟩ = 0 (equal probability of moving left/right)",
+      "  ⟨p²⟩ = n²π²ℏ²/L²",
+      "  ⟨H⟩ = Eₙ = n²π²ℏ²/(2mL²)",
+      "Uncertainty: Δx·Δp ≥ ℏ/2 (Heisenberg)",
+    ],
+    physicalMeaning: "Connects quantum theory to measurable quantities. The average of many identical measurements on identically prepared systems.",
+    solutionMethod: "Evaluate the integral ∫ψ*Âψ dx directly, or use ladder operators / matrix methods.",
+  },
+  momentum: {
+    name: "Momentum Operator",
+    equation: "p̂ = -iℏ d/dx",
+    explanation: [
+      "The momentum operator in position representation is p̂ = -iℏ d/dx.",
+      "It acts linearly: p̂(aψ₁ + bψ₂) = a p̂ψ₁ + b p̂ψ₂",
+      "Eigenstates of p̂: p̂ψ = pψ → ψ(x) = Ae^(ipx/ℏ) (plane waves)",
+      "Eigenvalue p can be any real number → continuous spectrum.",
+      "Commutation relation: [x̂, p̂] = iℏ (fundamental to uncertainty principle)",
+      "In 3D: p̂ = -iℏ∇ (gradient operator)",
+    ],
+    solution: [
+      "Eigenvalue equation: -iℏ dψ/dx = pψ",
+      "Solution: ψₚ(x) = (1/√2πℏ) e^(ipx/ℏ)",
+      "These are not normalizable → use wave packets",
+      "⟨p⟩ for particle in box: ⟨p⟩ = 0 (symmetric)",
+      "⟨p²⟩ for particle in box: ⟨p²⟩ = n²π²ℏ²/L²",
+      "Kinetic energy: T̂ = p̂²/(2m) = -ℏ²/(2m) d²/dx²",
+    ],
+    physicalMeaning: "Generates spatial translations. Its eigenvalues give the linear momentum of a particle.",
+    solutionMethod: "Solve -iℏ dψ/dx = pψ to get plane wave eigenstates.",
+  },
+  planck: {
+    name: "Planck Energy–Frequency Relation",
+    equation: "E = hf = ℏω",
+    explanation: [
+      "Energy of a photon is proportional to its frequency f.",
+      "h = 6.626 × 10⁻³⁴ J·s is Planck's constant.",
+      "ℏ = h/(2π) is the reduced Planck constant.",
+      "ω = 2πf is the angular frequency.",
+      "This is linear in f: compare with y = mx where m = h, c = 0.",
+      "This relation was the birth of quantum theory (Max Planck, 1900).",
+      "It implies energy is quantized in units of hf.",
+    ],
+    solution: [
+      "E = hf is already solved — it's a direct proportionality.",
+      "For visible light (f ≈ 5×10¹⁴ Hz): E ≈ 3.3 × 10⁻¹⁹ J ≈ 2.07 eV",
+      "For X-rays (f ≈ 10¹⁸ Hz): E ≈ 4.1 keV",
+      "Photoelectric effect: Eₖ = hf - φ (work function)",
+      "Graphically: slope = h, y-intercept = -φ",
+    ],
+    physicalMeaning: "Connects wave nature (frequency) to particle nature (energy) of light. Foundation of wave-particle duality.",
+    solutionMethod: "Direct proportionality — no differential equation to solve.",
+  },
+  debroglie: {
+    name: "de Broglie Relation",
+    equation: "p = h/λ = ℏk",
+    explanation: [
+      "Every particle with momentum p has an associated wavelength λ = h/p.",
+      "k = 2π/λ is the wave number.",
+      "In the form p = ℏk, this is linear in k.",
+      "Compare with y = mx: y → p, x → k, m → ℏ, c → 0.",
+      "This extends wave-particle duality to matter (not just photons).",
+      "Confirmed by electron diffraction experiments (Davisson-Germer, 1927).",
+    ],
+    solution: [
+      "λ = h/p = h/(mv) for massive particles",
+      "For electron at 100 eV: λ ≈ 0.123 nm (comparable to atomic spacing)",
+      "For baseball (0.145 kg, 40 m/s): λ ≈ 1.1 × 10⁻³⁴ m (undetectable)",
+      "Free particle wavefunction: ψ = Ae^(ikx) where k = p/ℏ",
+    ],
+    physicalMeaning: "Assigns a wavelength to all matter, explaining quantum interference and diffraction of particles.",
+    solutionMethod: "Direct relation — λ = h/p. Use for calculating matter wave properties.",
+  },
+  probability_current: {
+    name: "Probability Current (1D)",
+    equation: "J = (ℏ/m) Im(ψ* ∂ψ/∂x)",
+    explanation: [
+      "J(x,t) is the probability current density — rate of probability flow per unit area.",
+      "Built from linear operators acting on ψ.",
+      "Satisfies continuity equation: ∂|ψ|²/∂t + ∂J/∂x = 0",
+      "This ensures conservation of total probability.",
+      "For a plane wave ψ = Ae^(ikx): J = |A|²ℏk/m = |A|²v",
+      "For a standing wave: J = 0 (no net probability flow).",
+    ],
+    solution: [
+      "Plane wave ψ = Ae^(i(kx-ωt)):",
+      "  J = |A|² ℏk/m = |A|² p/m = |A|² v",
+      "Reflected + transmitted wave at step potential:",
+      "  J_incident = |A|²ℏk₁/m",
+      "  J_reflected = |B|²ℏk₁/m",
+      "  J_transmitted = |C|²ℏk₂/m",
+      "  Reflection coefficient: R = |B/A|²",
+      "  Transmission coefficient: T = (k₂/k₁)|C/A|²",
+    ],
+    physicalMeaning: "Describes how probability 'flows' through space, analogous to electric current density in electromagnetism.",
+    solutionMethod: "Direct computation from ψ. Use to find reflection/transmission coefficients at potential barriers.",
+  },
+};
+
+// Match user input to known equations
+function detectEquation(input: string): string | null {
+  const lower = input.toLowerCase().replace(/\s+/g, "");
+  if (lower.includes("iℏ") && (lower.includes("∂ψ/∂t") || lower.includes("∂†") || lower.includes("∂ψ/∂"))) return "tdse";
+  if (lower.includes("ĥψ=eψ") || lower.includes("ĥψ") || (lower.includes("tise") || lower.includes("time-independent"))) return "tise";
+  if (lower.includes("⟨a⟩") || lower.includes("expectation") || lower.includes("ψ*â")) return "expectation";
+  if (lower.includes("p̂") || lower.includes("p^") || (lower.includes("momentum") && lower.includes("operator"))) return "momentum";
+  if (lower.includes("e=hf") || lower.includes("planck") || lower.includes("ℏω")) return "planck";
+  if (lower.includes("debroglie") || lower.includes("h/λ") || lower.includes("ℏk")) return "debroglie";
+  if (lower.includes("probability current") || lower.includes("ℑ(ψ")) return "probability_current";
+  // Fallback pattern matching
+  if (lower.includes("iℏ∂") || lower.includes("iℏ")) return "tdse";
+  if (lower.includes("ĥ") && lower.includes("ψ")) return "tise";
+  return null;
+}
+
+// ── Quantum presets for visualization ──
 const quantumPresets = [
   { name: "Particle in a Box", eq: "ψₙ(x) = √(2/L) sin(nπx/L)" },
   { name: "Harmonic Oscillator", eq: "ψₙ(x) = Hₙ(x) e^{-x²/2}" },
@@ -20,7 +214,6 @@ const quantumPresets = [
 
 const symbols = ["ℏ", "ω", "ψ", "∇", "i", "∂", "Ĥ", "⟨", "⟩", "σ", "†", "⊗"];
 
-// Generate quantum data for presets
 function generateQuantumData(preset: string, n: number = 1) {
   const points: { x: number; psi: number; prob: number; potential?: number }[] = [];
   const L = 1;
@@ -35,7 +228,6 @@ function generateQuantumData(preset: string, n: number = 1) {
       }
       break;
     case "Harmonic Oscillator": {
-      // Hermite-Gaussian functions
       for (let i = 0; i <= N; i++) {
         const x = -4 + (8 * i / N);
         let hermite: number;
@@ -55,8 +247,8 @@ function generateQuantumData(preset: string, n: number = 1) {
       for (let i = 0; i <= N; i++) {
         const x = -5 + (10 * i / N);
         const k = n;
-        const psi = Math.cos(k * x); // Real part of e^(ikx)
-        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: 1 }); // |e^ikx|^2 = 1
+        const psi = Math.cos(k * x);
+        points.push({ x: parseFloat(x.toFixed(4)), psi: parseFloat(psi.toFixed(6)), prob: 1 });
       }
       break;
     case "Step Potential": {
@@ -126,6 +318,11 @@ const QuantumSolver = () => {
   const [playing, setPlaying] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [quantumN, setQuantumN] = useState(1);
+  const [solveResult, setSolveResult] = useState<string[] | null>(null);
+  const [explainResult, setExplainResult] = useState<string[] | null>(null);
+  const [resultTitle, setResultTitle] = useState("");
+  const [resultPhysical, setResultPhysical] = useState("");
+  const [resultMethod, setResultMethod] = useState("");
 
   const graphData = useMemo(() => {
     if (!activePreset) return null;
@@ -138,6 +335,77 @@ const QuantumSolver = () => {
   }, [activePreset]);
 
   const hasPotential = graphData?.some(d => d.potential !== undefined);
+
+  const handleSolve = () => {
+    const detected = detectEquation(input);
+    if (detected && quantumKnowledge[detected]) {
+      const info = quantumKnowledge[detected];
+      setResultTitle(info.name);
+      setSolveResult(info.solution);
+      setExplainResult(null);
+      setResultPhysical(info.physicalMeaning);
+      setResultMethod(info.solutionMethod);
+    } else {
+      setResultTitle("Equation Not Recognized");
+      setSolveResult(["Could not identify the quantum equation. Try one of these formats:", 
+        "• iℏ ∂ψ/∂t = Ĥψ (TDSE)",
+        "• Ĥψ = Eψ (TISE)", 
+        "• ⟨A⟩ = ∫ ψ* Â ψ dx (Expectation Value)",
+        "• p̂ = -iℏ d/dx (Momentum Operator)",
+        "• E = hf (Planck Relation)",
+        "• p = ℏk (de Broglie Relation)",
+        "• J = (ℏ/m) Im(ψ* ∂ψ/∂x) (Probability Current)"]);
+      setExplainResult(null);
+      setResultPhysical("");
+      setResultMethod("");
+    }
+  };
+
+  const handleExplain = () => {
+    const detected = detectEquation(input);
+    if (detected && quantumKnowledge[detected]) {
+      const info = quantumKnowledge[detected];
+      setResultTitle(info.name);
+      setExplainResult(info.explanation);
+      setSolveResult(null);
+      setResultPhysical(info.physicalMeaning);
+      setResultMethod(info.solutionMethod);
+    } else {
+      setResultTitle("Equation Not Recognized");
+      setExplainResult(["Could not identify the equation. Enter a recognized quantum equation or select a preset below."]);
+      setSolveResult(null);
+      setResultPhysical("");
+      setResultMethod("");
+    }
+  };
+
+  const handleDerive = () => {
+    const detected = detectEquation(input);
+    if (detected && quantumKnowledge[detected]) {
+      const info = quantumKnowledge[detected];
+      setResultTitle(`Derivation: ${info.name}`);
+      setSolveResult(null);
+      setExplainResult([
+        `Starting from: ${info.equation}`,
+        "",
+        ...info.explanation,
+        "",
+        "── Solution Steps ──",
+        ...info.solution,
+      ]);
+      setResultPhysical(info.physicalMeaning);
+      setResultMethod(info.solutionMethod);
+    } else {
+      handleExplain();
+    }
+  };
+
+  const loadEquationPreset = (key: string) => {
+    const info = quantumKnowledge[key];
+    if (info) {
+      setInput(info.equation);
+    }
+  };
 
   return (
     <PageLayout>
@@ -159,7 +427,7 @@ const QuantumSolver = () => {
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Enter quantum equation (LaTeX supported)..."
+                placeholder="Enter quantum equation (e.g. iℏ∂ψ/∂t = Ĥψ)..."
                 className="w-full h-32 bg-secondary/50 border border-border rounded-lg p-3 font-mono text-sm text-foreground resize-none focus:outline-none focus:border-primary/50"
               />
 
@@ -177,22 +445,41 @@ const QuantumSolver = () => {
               </div>
 
               <div className="flex gap-2 mt-4">
-                <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSolve}>
                   <Play size={12} /> Solve
                 </Button>
-                <Button size="sm" variant="outline" className="border-border">Derive</Button>
-                <Button size="sm" variant="outline" className="border-border">Explain</Button>
+                <Button size="sm" variant="outline" className="border-border" onClick={handleDerive}>Derive</Button>
+                <Button size="sm" variant="outline" className="border-border gap-1.5" onClick={handleExplain}>
+                  <BookOpen size={12} /> Explain
+                </Button>
               </div>
             </GlassCard>
 
-            {/* Presets */}
+            {/* Equation Presets (for solver) */}
             <GlassCard>
-              <h2 className="text-sm font-semibold text-foreground mb-3">Quantum Presets</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-3">Equation Presets</h2>
+              <div className="space-y-1.5">
+                {Object.entries(quantumKnowledge).map(([key, info]) => (
+                  <button
+                    key={key}
+                    onClick={() => loadEquationPreset(key)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs transition-all hover:bg-secondary/70 text-muted-foreground border border-transparent hover:border-border/50"
+                  >
+                    <div className="font-medium text-foreground text-xs">{info.name}</div>
+                    <div className="font-mono text-xs mt-0.5 text-primary/70">{info.equation}</div>
+                  </button>
+                ))}
+              </div>
+            </GlassCard>
+
+            {/* Visualization Presets */}
+            <GlassCard>
+              <h2 className="text-sm font-semibold text-foreground mb-3">Visualization Presets</h2>
               <div className="space-y-2">
                 {quantumPresets.map(p => (
                   <button
                     key={p.name}
-                    onClick={() => { setActivePreset(p.name); setInput(p.eq); setQuantumN(1); }}
+                    onClick={() => { setActivePreset(p.name); setQuantumN(1); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                       activePreset === p.name
                         ? "bg-primary/15 border border-primary/30 text-primary"
@@ -229,6 +516,42 @@ const QuantumSolver = () => {
 
           {/* Right: Output */}
           <div className="lg:col-span-3 space-y-4">
+            {/* Solve/Explain output */}
+            {(solveResult || explainResult) && (
+              <GlassCard>
+                <h2 className="text-sm font-semibold text-foreground mb-3">{resultTitle}</h2>
+                <div className="space-y-2 mb-4">
+                  {(solveResult || explainResult)?.map((line, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      {line === "" ? <div className="h-2" /> : (
+                        <>
+                          {!line.startsWith("──") && !line.startsWith("•") && !line.startsWith("Could") && (
+                            <ChevronRight size={14} className="text-primary mt-0.5 shrink-0" />
+                          )}
+                          <span className={`font-mono ${line.startsWith("──") ? "text-primary font-bold" : line.startsWith("  ") ? "text-primary/80 pl-4" : "text-muted-foreground"}`}>
+                            {line}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {resultPhysical && (
+                  <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                    <div className="text-xs font-semibold text-primary mb-1">Physical Meaning</div>
+                    <p className="text-xs text-muted-foreground">{resultPhysical}</p>
+                  </div>
+                )}
+                {resultMethod && (
+                  <div className="mt-2 p-3 rounded-lg bg-secondary/30 border border-border/50">
+                    <div className="text-xs font-semibold text-foreground mb-1">Solution Method</div>
+                    <p className="text-xs text-muted-foreground font-mono">{resultMethod}</p>
+                  </div>
+                )}
+              </GlassCard>
+            )}
+
+            {/* Graph */}
             <GlassCard className="min-h-[300px]">
               <h2 className="text-sm font-semibold text-foreground mb-3">
                 Wavefunction ψ(x) {activePreset && `— ${activePreset} (n=${quantumN})`}
@@ -253,7 +576,7 @@ const QuantumSolver = () => {
                 <div className="rounded-lg border border-border/50 bg-secondary/20 h-64 flex items-center justify-center">
                   <div className="text-center">
                     <Atom className="h-12 w-12 text-primary/30 mx-auto mb-3" strokeWidth={1} />
-                    <p className="text-sm text-muted-foreground">Select a preset or enter an equation to visualize</p>
+                    <p className="text-sm text-muted-foreground">Select a visualization preset to see the wavefunction</p>
                   </div>
                 </div>
               )}
@@ -277,11 +600,7 @@ const QuantumSolver = () => {
             <GlassCard>
               <h2 className="text-sm font-semibold text-foreground mb-3">TDSE Simulation Controls</h2>
               <div className="flex items-center gap-3 mb-4">
-                <Button
-                  size="sm"
-                  onClick={() => setPlaying(!playing)}
-                  className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-                >
+                <Button size="sm" onClick={() => setPlaying(!playing)} className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
                   {playing ? <Pause size={12} /> : <Play size={12} />}
                   {playing ? "Pause" : "Play"}
                 </Button>
@@ -289,14 +608,8 @@ const QuantumSolver = () => {
                   <SkipForward size={12} />
                 </Button>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: "Time", id: "time" },
-                  { label: "Speed", id: "speed" },
-                  { label: "Grid Size", id: "grid" },
-                  { label: "dt", id: "dt" },
-                ].map(ctrl => (
+                {[{ label: "Time", id: "time" }, { label: "Speed", id: "speed" }, { label: "Grid Size", id: "grid" }, { label: "dt", id: "dt" }].map(ctrl => (
                   <div key={ctrl.id}>
                     <label className="text-xs text-muted-foreground mb-1 block">{ctrl.label}</label>
                     <Input className="bg-secondary/50 border-border font-mono text-sm h-8" placeholder="0" />
