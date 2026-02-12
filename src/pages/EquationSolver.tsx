@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { Play, Download, RotateCcw, ChevronRight } from "lucide-react";
 import * as math from "mathjs";
+import LinearSolverGraph from "@/components/LinearSolverGraph";
+import PhysicsPresets from "@/components/PhysicsPresets";
 
 const presets = [
   { name: "Schrödinger (TDSE)", eq: "iℏ ∂Ψ/∂t = ĤΨ" },
@@ -23,6 +25,7 @@ const EquationSolver = () => {
   const [equation, setEquation] = useState("");
   const [linearResult, setLinearResult] = useState<string | null>(null);
   const [linearSteps, setLinearSteps] = useState<string[]>([]);
+  const [linearGraph, setLinearGraph] = useState<{ m: number; c: number } | null>(null);
   const [matrixSize, setMatrixSize] = useState(3);
   const [matrixValues, setMatrixValues] = useState<string[][]>(
     Array.from({ length: 3 }, () => Array(3).fill("0"))
@@ -42,15 +45,14 @@ const EquationSolver = () => {
     try {
       const steps: string[] = [];
       const eq = equation.trim();
+      setLinearGraph(null);
       
       if (!eq) { setLinearResult("Please enter an equation."); return; }
 
-      // Try to solve equation like "2*x + 3 = 7"
       if (eq.includes("=")) {
         const [left, right] = eq.split("=").map(s => s.trim());
         steps.push(`Given: ${left} = ${right}`);
         
-        // Try to find the variable
         const vars = eq.match(/[a-zA-Z]/g);
         const uniqueVars = [...new Set(vars || [])].filter(v => !["e", "E"].includes(v));
         
@@ -60,19 +62,16 @@ const EquationSolver = () => {
           steps.push(`Rearranging: ${left} - (${right}) = 0`);
           
           const expr = `${left} - (${right})`;
-          // Use mathjs to simplify and solve
           const node = math.parse(expr);
           const simplified = math.simplify(node);
           steps.push(`Simplified: ${simplified.toString()} = 0`);
           
-          // Numerical solve using mathjs
           const f = (val: number) => {
             const scope: Record<string, number> = {};
             scope[variable] = val;
             return simplified.evaluate(scope) as number;
           };
           
-          // Simple Newton's method
           let x = 0;
           for (let i = 0; i < 100; i++) {
             const fx = f(x);
@@ -85,23 +84,78 @@ const EquationSolver = () => {
           const rounded = Math.abs(x) < 1e-10 ? 0 : parseFloat(x.toFixed(8));
           steps.push(`${variable} = ${rounded}`);
           setLinearResult(`${variable} = ${rounded}`);
+
+          // Try to detect y=mx+c pattern for graphing
+          try {
+            const f0 = (() => { const s: Record<string, number> = {}; s[variable] = 0; return math.evaluate(right, s) as number; })();
+            const f1 = (() => { const s: Record<string, number> = {}; s[variable] = 1; return math.evaluate(right, s) as number; })();
+            // Check linearity
+            const f2 = (() => { const s: Record<string, number> = {}; s[variable] = 2; return math.evaluate(right, s) as number; })();
+            const m1 = f1 - f0;
+            const m2 = f2 - f1;
+            if (Math.abs(m1 - m2) < 1e-8) {
+              // It's linear! Plot it as y = mx + c
+              steps.push(`Slope (m) = ${parseFloat(m1.toFixed(6))}`);
+              steps.push(`y-intercept (c) = ${parseFloat(f0.toFixed(6))}`);
+              steps.push(`To find c: set ${variable} = 0 → y = ${parseFloat(f0.toFixed(6))}`);
+              setLinearGraph({ m: parseFloat(m1.toFixed(6)), c: parseFloat(f0.toFixed(6)) });
+            }
+          } catch {}
         } else if (uniqueVars.length === 0) {
-          // Check equality
           const leftVal = math.evaluate(left);
           const rightVal = math.evaluate(right);
           steps.push(`Left side = ${leftVal}`);
           steps.push(`Right side = ${rightVal}`);
           const equal = Math.abs(Number(leftVal) - Number(rightVal)) < 1e-10;
           setLinearResult(equal ? "✓ Equation is TRUE" : "✗ Equation is FALSE");
+        } else if (uniqueVars.length === 2) {
+          // Two-variable linear equation — plot as y = f(x)
+          steps.push(`Variables: ${uniqueVars.join(", ")}`);
+          const yVar = uniqueVars.find(v => v === "y") || uniqueVars[0];
+          const xVar = uniqueVars.find(v => v !== yVar) || uniqueVars[1];
+          steps.push(`Treating ${yVar} as dependent, ${xVar} as independent`);
+          
+          // Try to evaluate as linear
+          try {
+            const expr = `${left} - (${right})`;
+            const simplified = math.simplify(math.parse(expr));
+            // Evaluate at two points to get slope
+            const evalAt = (xVal: number) => {
+              const s: Record<string, number> = {};
+              s[xVar] = xVal;
+              s[yVar] = 0;
+              const atZero = simplified.evaluate(s) as number;
+              s[yVar] = 1;
+              const atOne = simplified.evaluate(s) as number;
+              const dyCoeff = atOne - atZero;
+              return dyCoeff !== 0 ? -atZero / dyCoeff : 0;
+            };
+            const y0 = evalAt(0);
+            const y1 = evalAt(1);
+            const y2 = evalAt(2);
+            const m = y1 - y0;
+            if (Math.abs((y2 - y1) - m) < 1e-8) {
+              steps.push(`${yVar} = ${m}${xVar}${y0 >= 0 ? " + " : " - "}${Math.abs(y0)}`);
+              steps.push(`Slope (m) = ${parseFloat(m.toFixed(6))}`);
+              steps.push(`${yVar}-intercept (c) = ${parseFloat(y0.toFixed(6))}`);
+              steps.push(`To find c: set ${xVar} = 0 → c = ${parseFloat(y0.toFixed(6))}`);
+              setLinearResult(`${yVar} = ${parseFloat(m.toFixed(6))}·${xVar} + ${parseFloat(y0.toFixed(6))}`);
+              setLinearGraph({ m: parseFloat(m.toFixed(6)), c: parseFloat(y0.toFixed(6)) });
+            } else {
+              setLinearResult(`${simplified.toString()} = 0`);
+            }
+          } catch {
+            const expr = `${left} - (${right})`;
+            const simplified = math.simplify(math.parse(expr));
+            setLinearResult(`${simplified.toString()} = 0`);
+          }
         } else {
-          steps.push(`Multiple variables detected: ${uniqueVars.join(", ")}`);
-          steps.push("Express one variable in terms of others:");
+          steps.push(`Multiple variables: ${uniqueVars.join(", ")}`);
           const expr = `${left} - (${right})`;
           const simplified = math.simplify(math.parse(expr));
           setLinearResult(`${simplified.toString()} = 0`);
         }
       } else {
-        // Just evaluate expression
         steps.push(`Evaluating: ${eq}`);
         const result = math.evaluate(eq);
         steps.push(`= ${result}`);
@@ -252,6 +306,12 @@ const EquationSolver = () => {
                   </p>
                 )}
               </div>
+              {linearGraph && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Graph: y = {linearGraph.m}x + {linearGraph.c}</h3>
+                  <LinearSolverGraph m={linearGraph.m} c={linearGraph.c} />
+                </div>
+              )}
             </GlassCard>
           </TabsContent>
 
@@ -361,14 +421,26 @@ const EquationSolver = () => {
 
           {/* Presets */}
           <TabsContent value="presets">
-            <div className="grid sm:grid-cols-2 gap-4">
-              {presets.map(p => (
-                <GlassCard key={p.name} hover className="cursor-pointer">
-                  <h3 className="text-sm font-semibold text-foreground mb-2">{p.name}</h3>
-                  <p className="font-mono text-primary text-sm">{p.eq}</p>
-                </GlassCard>
-              ))}
-            </div>
+            <GlassCard className="mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Equation Presets</h2>
+              <p className="text-sm text-muted-foreground mb-4">Classic differential equation templates</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {presets.map(p => (
+                  <GlassCard key={p.name} hover className="cursor-pointer !p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
+                    <p className="font-mono text-primary text-xs">{p.eq}</p>
+                  </GlassCard>
+                ))}
+              </div>
+            </GlassCard>
+
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              Physics <span className="text-gradient">Linear Equations</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              All these equations follow the y = mx + c form. Select one to see the mapping, explanation, and graph.
+            </p>
+            <PhysicsPresets />
           </TabsContent>
         </Tabs>
       </div>
