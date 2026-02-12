@@ -239,17 +239,130 @@ const EquationSolver = () => {
       setDiffResult("Please select an equation type first.");
       return;
     }
-    // Provide analytical solutions for known types
-    const solutions: Record<string, string> = {
-      "First-order ODE": "General solution: y' = f(x,y)\nFor y' = ay: y(x) = Ce^(ax)\nFor y' + P(x)y = Q(x): y = e^(-∫P dx)[∫Q·e^(∫P dx) dx + C]",
-      "Second-order ODE": "General solution: y'' + py' + qy = 0\nCharacteristic equation: r² + pr + q = 0\nSolution: y = C₁e^(r₁x) + C₂e^(r₂x)",
-      "Legendre ODE": "(1-x²)y'' - 2xy' + l(l+1)y = 0\nSolutions: Legendre polynomials Pₗ(x)\nP₀=1, P₁=x, P₂=(3x²-1)/2, P₃=(5x³-3x)/2",
-      "Bessel ODE": "x²y'' + xy' + (x²-n²)y = 0\nSolutions: Bessel functions Jₙ(x), Yₙ(x)\nJ₀(0) = 1, Y₀ diverges at x=0",
-      "Heat Equation": "∂u/∂t = α∇²u\nSolution (1D): u(x,t) = Σ Bₙ sin(nπx/L) e^(-α(nπ/L)²t)\nBₙ = (2/L)∫₀ᴸ f(x)sin(nπx/L)dx",
-      "Wave Equation": "∂²u/∂t² = c²∇²u\nD'Alembert solution: u(x,t) = f(x-ct) + g(x+ct)\nStanding waves: u = sin(nπx/L)cos(nπct/L)",
-      "Laplace Equation": "∇²u = 0\nSolution (2D rectangular): u(x,y) = Σ(Aₙcosh(nπy/L) + Bₙsinh(nπy/L))sin(nπx/L)"
+
+    const solutions: Record<string, { equation: string; steps: string[]; solution: string; explanation: string }> = {
+      "First-order ODE": {
+        equation: "y' + P(x)y = Q(x)",
+        steps: [
+          "Step 1: Identify the form y' + P(x)y = Q(x) (Linear First-Order ODE)",
+          "Step 2: Calculate integrating factor: μ(x) = e^(∫P(x)dx)",
+          "Step 3: Multiply both sides by μ(x): μ(x)y' + μ(x)P(x)y = μ(x)Q(x)",
+          "Step 4: Left side becomes d/dx[μ(x)y]",
+          "Step 5: Integrate both sides: μ(x)y = ∫μ(x)Q(x)dx + C",
+          "Step 6: Solve for y: y = (1/μ(x))[∫μ(x)Q(x)dx + C]"
+        ],
+        solution: "y(x) = e^(-∫P(x)dx) · [∫Q(x)·e^(∫P(x)dx)dx + C]",
+        explanation: "First-order linear ODEs are solved using the integrating factor method. This exponential factor transforms the equation into an exact derivative form, allowing direct integration."
+      },
+      "Second-order ODE": {
+        equation: "y'' + py' + qy = 0 (Homogeneous, constant coefficients)",
+        steps: [
+          "Step 1: Assume solution form y = e^(rx)",
+          "Step 2: Calculate derivatives: y' = re^(rx), y'' = r²e^(rx)",
+          "Step 3: Substitute into ODE: r²e^(rx) + pre^(rx) + qe^(rx) = 0",
+          "Step 4: Factor out e^(rx): e^(rx)[r² + pr + q] = 0",
+          "Step 5: Solve characteristic equation: r² + pr + q = 0",
+          "Step 6: Using quadratic formula: r = (-p ± √(p²-4q))/2",
+          "Step 7: Case 1 (r₁ ≠ r₂): y = C₁e^(r₁x) + C₂e^(r₂x)",
+          "Step 8: Case 2 (r₁ = r₂): y = (C₁ + C₂x)e^(r₁x)"
+        ],
+        solution: "y(x) = C₁e^(r₁x) + C₂e^(r₂x), where r₁,r₂ are roots of r² + pr + q = 0",
+        explanation: "Second-order linear ODEs with constant coefficients are solved by assuming exponential solutions. The characteristic equation determines the form of the general solution."
+      },
+      "Legendre ODE": {
+        equation: "(1-x²)y'' - 2xy' + l(l+1)y = 0",
+        steps: [
+          "Step 1: Recognize as Legendre's equation with parameter l",
+          "Step 2: This is a regular singular point ODE at x = ±1",
+          "Step 3: Solutions are Legendre polynomials Pₗ(x) and Qₗ(x)",
+          "Step 4: Compute first few polynomials:",
+          "       P₀(x) = 1",
+          "       P₁(x) = x",
+          "       P₂(x) = (3x² - 1)/2",
+          "       P₃(x) = (5x³ - 3x)/2",
+          "Step 5: General solution: y(x) = C₁Pₗ(x) + C₂Qₗ(x)"
+        ],
+        solution: "y(x) = C₁Pₗ(x) + C₂Qₗ(x), where Pₗ are Legendre polynomials",
+        explanation: "Legendre's equation appears in solving Laplace's equation in spherical coordinates. Legendre polynomials are orthogonal and widely used in physics and engineering."
+      },
+      "Bessel ODE": {
+        equation: "x²y'' + xy' + (x²-n²)y = 0",
+        steps: [
+          "Step 1: Recognize as Bessel's equation of order n",
+          "Step 2: Regular singular point at x = 0",
+          "Step 3: Try Frobenius series: y = x^s Σ aₖx^k",
+          "Step 4: Indicial equation gives s = ±n",
+          "Step 5: First linearly independent solution: Jₙ(x) (Bessel function of first kind)",
+          "Step 6: Second solution: Yₙ(x) (Bessel function of second kind, unbounded at x=0)",
+          "Step 7: General solution: y(x) = C₁Jₙ(x) + C₂Yₙ(x)"
+        ],
+        solution: "y(x) = C₁Jₙ(x) + C₂Yₙ(x), where Jₙ, Yₙ are Bessel functions",
+        explanation: "Bessel's equation appears in cylindrical coordinate problems. Bessel functions oscillate and decay, fundamental in vibrations, wave propagation, and heat conduction in cylinders."
+      },
+      "Heat Equation": {
+        equation: "∂u/∂t = α∇²u (Heat conduction)",
+        steps: [
+          "Step 1: Use separation of variables: u(x,t) = X(x)T(t)",
+          "Step 2: Substitute into PDE: X(x)T'(t) = αX''(x)T(t)",
+          "Step 3: Divide by αX(x)T(t): (1/α)·(T'/T) = X''/X = -λ (separation constant)",
+          "Step 4: Spatial equation: X'' + λX = 0 → X(x) = A sin(√λ x) + B cos(√λ x)",
+          "Step 5: Temporal equation: T' + αλT = 0 → T(t) = Ce^(-αλt)",
+          "Step 6: Apply boundary conditions to find λₙ and coefficients",
+          "Step 7: Sum over all modes: u(x,t) = Σ Bₙ sin(nπx/L) e^(-α(nπ/L)²t)"
+        ],
+        solution: "u(x,t) = Σ Bₙ sin(nπx/L) exp(-α(nπ/L)²t), where Bₙ = (2/L)∫₀ᴸ f(x)sin(nπx/L)dx",
+        explanation: "The heat equation models temperature diffusion. Solutions show how initial temperature distribution spreads and smooths over time, with exponential decay of higher-frequency modes."
+      },
+      "Wave Equation": {
+        equation: "∂²u/∂t² = c²∇²u (Wave propagation)",
+        steps: [
+          "Step 1: Use separation of variables: u(x,t) = X(x)T(t)",
+          "Step 2: Substitute: X(x)T''(t) = c²X''(x)T(t)",
+          "Step 3: Separate: T''/c²T = X''/X = -λ",
+          "Step 4: Spatial: X'' + λX = 0 → X(x) = A sin(√λ x) + B cos(√λ x)",
+          "Step 5: Temporal: T'' + c²λT = 0 → T(t) = C cos(ωt) + D sin(ωt), ω = c√λ",
+          "Step 6: Standing wave solution: u(x,t) = sin(nπx/L)cos(nπct/L + φ)",
+          "Step 7: D'Alembert's general solution: u(x,t) = f(x-ct) + g(x+ct)"
+        ],
+        solution: "u(x,t) = f(x-ct) + g(x+ct), or u = Σ[Aₙcos(nπct/L) + Bₙsin(nπct/L)]sin(nπx/L)",
+        explanation: "The wave equation describes vibrating strings, sound waves, and electromagnetic waves. Solutions are superpositions of left and right-traveling waves with no damping."
+      },
+      "Laplace Equation": {
+        equation: "∇²u = 0 (Steady-state, no time dependence)",
+        steps: [
+          "Step 1: In 2D Cartesian: ∂²u/∂x² + ∂²u/∂y² = 0",
+          "Step 2: Use separation: u(x,y) = X(x)Y(y)",
+          "Step 3: Separate: X''/X = -Y''/Y = λ",
+          "Step 4: Spatial solutions: X(x) = A sin(√λ x) + B cos(√λ x)",
+          "Step 5: Y-equation: Y'' - λY = 0 → Y(y) = C sinh(√λ y) + D cosh(√λ y)",
+          "Step 6: Apply boundary conditions to find λₙ",
+          "Step 7: General solution (rectangular domain):",
+          "       u(x,y) = Σ[Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)"
+        ],
+        solution: "u(x,y) = Σ[Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)",
+        explanation: "Laplace's equation governs steady-state heat, electrostatics, and fluid flow. Solutions are harmonic functions with no sources/sinks and represent equilibrium states."
+      }
     };
-    setDiffResult(solutions[selectedDiffType] || "Solution method not available for this type.");
+
+    const selected = solutions[selectedDiffType];
+    if (!selected) {
+      setDiffResult("Solution method not available for this type.");
+      return;
+    }
+
+    const output = `
+📋 EQUATION: ${selected.equation}
+
+${selected.steps.map(s => s).join("\n")}
+
+✅ FINAL ANSWER:
+${selected.solution}
+
+💡 EXPLANATION:
+${selected.explanation}
+    `.trim();
+
+    setDiffResult(output);
   };
 
   return (
