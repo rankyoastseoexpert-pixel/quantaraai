@@ -2,30 +2,89 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
 import FloatingEquations from "@/components/FloatingEquations";
-import WaveCurve from "@/components/WaveCurve";
+import HeroWaveAnimation from "@/components/HeroWaveAnimation";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Activity, Atom, BarChart3, ShieldCheck, FileDown } from "lucide-react";
+import {
+  ArrowRight,
+  Activity,
+  Atom,
+  BarChart3,
+  FileDown,
+  Zap,
+  Eye,
+  ChevronRight,
+  Waves,
+} from "lucide-react";
 
 const stats = [
   { value: "50+", label: "Equation Types" },
   { value: "12", label: "Quantum Models" },
   { value: "∞", label: "Visualizations" },
-  { value: "100%", label: "Numerical Validation" },
+  { value: "100%", label: "Validated" },
 ];
 
 const features = [
-  { icon: Activity, title: "Equation Solver", desc: "Solve linear, differential, and matrix equations with step-by-step derivations." },
-  { icon: Atom, title: "Quantum Models", desc: "Explore 12+ quantum systems with wavefunctions, energy levels, and time evolution." },
-  { icon: BarChart3, title: "Diagram Generator", desc: "Generate publication-ready scientific graphs with custom functions and presets." },
-  { icon: ShieldCheck, title: "Validation Toolkit", desc: "Verify numerical results with stability checks and convergence analysis." },
-  { icon: FileDown, title: "Export & Reports", desc: "Export solutions as LaTeX, PDF, SVG, or PNG for academic publications." },
+  {
+    icon: Waves,
+    title: "Time-Dependent Schrödinger Solver",
+    desc: "Simulate quantum state evolution iℏ∂ψ/∂t = Ĥψ with real-time wavefunction animation.",
+  },
+  {
+    icon: Atom,
+    title: "Time-Independent Solver",
+    desc: "Find energy eigenvalues and eigenstates for bound and scattering potentials.",
+  },
+  {
+    icon: Eye,
+    title: "Potential Visualizer",
+    desc: "Interactive potential energy landscapes with barrier, well, and harmonic oscillator presets.",
+  },
+  {
+    icon: BarChart3,
+    title: "Wavefunction Graphing Engine",
+    desc: "Publication-quality plots of ψ(x), |ψ|², probability currents, and energy spectra.",
+  },
+  {
+    icon: Activity,
+    title: "Classical Equation Solver",
+    desc: "Differential equations, integrals, and linear algebra with step-by-step derivations.",
+  },
+  {
+    icon: FileDown,
+    title: "Data Export Tools",
+    desc: "Export solutions as LaTeX, PDF, SVG, or PNG for academic publications and reports.",
+  },
+];
+
+const workflowSteps = [
+  {
+    title: "Input Your Equation",
+    desc: "Type or select from presets — Schrödinger, Legendre, Bessel, Heat, Wave equations and more.",
+    icon: "ψ",
+  },
+  {
+    title: "Watch It Solve",
+    desc: "Animated step-by-step derivations with progress tracking and intermediate results.",
+    icon: "∂",
+  },
+  {
+    title: "Visualize Results",
+    desc: "Interactive graphs with wavefunctions, probability densities, and energy level diagrams.",
+    icon: "∫",
+  },
+  {
+    title: "Export & Verify",
+    desc: "Download publication-ready outputs with full numerical validation and convergence analysis.",
+    icon: "✓",
+  },
 ];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
-    opacity: 1, y: 0,
+    opacity: 1,
+    y: 0,
     transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const },
   }),
 };
@@ -33,10 +92,20 @@ const fadeUp = {
 const Index = () => {
   return (
     <PageLayout>
-      {/* Hero */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* ═══════ HERO ═══════ */}
+      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
         <FloatingEquations />
-        <WaveCurve />
+        <HeroWaveAnimation />
+
+        {/* Radial glow */}
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full opacity-20"
+            style={{
+              background: "radial-gradient(circle, hsl(195 100% 50% / 0.15) 0%, transparent 70%)",
+            }}
+          />
+        </div>
 
         <div className="container relative z-10 px-4 text-center">
           <motion.div
@@ -44,42 +113,68 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-glow" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-5 py-2 text-xs font-medium text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               Research-Grade Scientific Platform
             </div>
 
-            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight mb-6">
+            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight mb-6 leading-[0.95]">
               <span className="text-foreground">WAVE </span>
-              <span className="text-gradient">QUANT</span>
+              <span className="text-gradient glow-text">QUANT</span>
             </h1>
 
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 font-light">
+            <p className="text-xl sm:text-2xl text-foreground/80 max-w-2xl mx-auto mb-3 font-light tracking-wide">
               Precision Mathematics. Visual Quantum Insight.
             </p>
-            <p className="text-sm text-muted-foreground/70 max-w-xl mx-auto mb-10">
-              A research-grade scientific web platform for solving classical and quantum equations
-              with interactive visualization, symbolic input, and reproducible numerical workflows.
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
+              Advanced quantum and classical equation solvers with interactive visualization,
+              symbolic computation, and reproducible numerical workflows.
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="gap-2 rounded-xl px-6 bg-primary text-primary-foreground hover:bg-primary/90 glow-border">
+              <Button
+                asChild
+                size="lg"
+                className="gap-2 rounded-full px-8 text-sm font-semibold hero-gradient-btn text-primary-foreground border-0"
+              >
                 <Link to="/solver">
                   Get Started <ArrowRight size={16} />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="rounded-xl px-6 border-border hover:bg-secondary">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="rounded-full px-8 text-sm border-border/50 hover:bg-secondary/50 hover:border-primary/30"
+              >
                 <Link to="/quantum">Open Quantum Solver</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="rounded-xl px-6 border-border hover:bg-secondary">
-                <Link to="/graph">Graph Generator</Link>
-              </Button>
             </div>
+
+            {/* Trust strip */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="mt-12 flex items-center justify-center gap-6 text-xs text-muted-foreground/60"
+            >
+              <span className="flex items-center gap-1.5">
+                <Zap size={12} className="text-primary/50" /> Instant Results
+              </span>
+              <span className="w-px h-3 bg-border" />
+              <span className="flex items-center gap-1.5">
+                <Atom size={12} className="text-primary/50" /> 12+ Quantum Models
+              </span>
+              <span className="w-px h-3 bg-border" />
+              <span className="flex items-center gap-1.5">
+                <FileDown size={12} className="text-primary/50" /> PDF / LaTeX Export
+              </span>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats */}
+      {/* ═══════ STATS ═══════ */}
       <section className="relative py-16">
         <div className="container px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -93,7 +188,9 @@ const Index = () => {
                 variants={fadeUp}
               >
                 <GlassCard className="text-center py-8" glow>
-                  <div className="text-3xl sm:text-4xl font-bold text-gradient mb-1 font-mono">{s.value}</div>
+                  <div className="text-3xl sm:text-4xl font-bold text-gradient mb-1 font-mono">
+                    {s.value}
+                  </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">{s.label}</div>
                 </GlassCard>
               </motion.div>
@@ -102,20 +199,72 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="relative py-20">
+      {/* ═══════ WORKFLOW: From Equations → To Results ═══════ */}
+      <section className="relative py-24">
         <div className="container px-4">
-          <motion.h2
-            className="text-3xl sm:text-4xl font-bold text-center mb-4"
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+              From <span className="text-gradient">Equations</span> to{" "}
+              <span className="text-gradient">Verified Results</span>
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+              A seamless workflow designed for researchers, students, and scientists.
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {workflowSteps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                custom={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                className="relative"
+              >
+                <GlassCard hover className="h-full text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary font-mono text-xl font-bold">
+                    {step.icon}
+                  </div>
+                  <div className="text-xs font-semibold text-primary/60 uppercase tracking-wider mb-2">
+                    Step {i + 1}
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+                </GlassCard>
+                {i < workflowSteps.length - 1 && (
+                  <div className="hidden lg:flex absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                    <ChevronRight size={16} className="text-primary/30" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ FEATURES ═══════ */}
+      <section className="relative py-24">
+        <div className="container px-4">
+          <motion.div
+            className="text-center mb-14"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
-            Built for <span className="text-gradient">Scientific Research</span>
-          </motion.h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto text-sm">
-            Every tool designed for precision, clarity, and reproducibility.
-          </p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+              Built for <span className="text-gradient">Scientific Research</span>
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+              Every tool designed for precision, clarity, and reproducibility.
+            </p>
+          </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {features.map((f, i) => (
@@ -128,9 +277,11 @@ const Index = () => {
                 variants={fadeUp}
               >
                 <GlassCard hover className="h-full">
-                  <f.icon className="h-8 w-8 text-primary mb-4" strokeWidth={1.5} />
-                  <h3 className="text-base font-semibold mb-2 text-foreground">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 mb-4">
+                    <f.icon className="h-5 w-5 text-primary" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-sm font-semibold mb-2 text-foreground">{f.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
                 </GlassCard>
               </motion.div>
             ))}
@@ -138,26 +289,184 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative py-20">
+      {/* ═══════ INTERACTIVE DEMO PREVIEW ═══════ */}
+      <section className="relative py-24">
+        <div className="container px-4">
+          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                See Quantum Physics{" "}
+                <span className="text-gradient">Come Alive</span>
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                Watch wavefunctions evolve in real-time, explore energy eigenvalues,
+                and interact with probability distributions — all rendered with
+                publication-quality precision.
+              </p>
+              <div className="space-y-3">
+                {[
+                  "Real-time wavefunction evolution |Ψ(x,t)|²",
+                  "Interactive energy level diagrams",
+                  "Step-by-step animated derivations",
+                  "Export-ready scientific graphs",
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8">
+                <Button
+                  asChild
+                  className="gap-2 rounded-full px-6 hero-gradient-btn text-primary-foreground border-0"
+                >
+                  <Link to="/quantum">
+                    Try Live Demo <ArrowRight size={14} />
+                  </Link>
+                </Button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <GlassCard glow className="p-0 overflow-hidden">
+                {/* Fake graph preview */}
+                <div className="p-4 border-b border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                    <span className="ml-2 text-[10px] font-mono text-muted-foreground">
+                      quantum-solver.wq
+                    </span>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="font-mono text-xs text-primary/80 space-y-1">
+                    <p><span className="text-muted-foreground">eq:</span> iℏ ∂Ψ/∂t = ĤΨ</p>
+                    <p><span className="text-muted-foreground">V(x):</span> ½mω²x²</p>
+                    <p><span className="text-muted-foreground">n:</span> 0, 1, 2, 3</p>
+                  </div>
+                  {/* Animated wave preview */}
+                  <svg className="w-full h-32" viewBox="0 0 400 100">
+                    <defs>
+                      <linearGradient id="demoWave" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="hsl(195 100% 50%)" stopOpacity="0" />
+                        <stop offset="50%" stopColor="hsl(195 100% 50%)" stopOpacity="0.8" />
+                        <stop offset="100%" stopColor="hsl(210 100% 56%)" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path stroke="url(#demoWave)" strokeWidth="2" fill="none">
+                      <animate
+                        attributeName="d"
+                        dur="3s"
+                        repeatCount="indefinite"
+                        values="
+                          M0,50 C50,20 100,80 150,50 C200,20 250,80 300,50 C350,20 400,50 400,50;
+                          M0,50 C50,80 100,20 150,50 C200,80 250,20 300,50 C350,80 400,50 400,50;
+                          M0,50 C50,20 100,80 150,50 C200,20 250,80 300,50 C350,20 400,50 400,50
+                        "
+                      />
+                    </path>
+                    <path stroke="hsl(210 100% 56%)" strokeWidth="1" fill="none" opacity="0.3">
+                      <animate
+                        attributeName="d"
+                        dur="4s"
+                        repeatCount="indefinite"
+                        values="
+                          M0,50 C80,35 160,65 240,50 C320,35 400,50 400,50;
+                          M0,50 C80,65 160,35 240,50 C320,65 400,50 400,50;
+                          M0,50 C80,35 160,65 240,50 C320,35 400,50 400,50
+                        "
+                      />
+                    </path>
+                  </svg>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                    <span>E₀ = ½ℏω</span>
+                    <span>|ψ₀(x)|² = Gaussian</span>
+                    <span className="text-green-400">✓ Converged</span>
+                  </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ CTA ═══════ */}
+      <section className="relative py-24">
         <div className="container px-4 text-center">
-          <GlassCard glow className="max-w-2xl mx-auto py-12 px-8">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
-              Start Exploring Quantum Systems
-            </h2>
-            <p className="text-muted-foreground mb-6 text-sm">
-              Dive into wavefunctions, energy spectra, and time evolution — all in your browser.
-            </p>
-            <Button asChild size="lg" className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link to="/quantum">
-                Launch Quantum Solver <ArrowRight size={16} />
-              </Link>
-            </Button>
+          <GlassCard glow className="max-w-2xl mx-auto py-14 px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
+                Start Exploring Quantum Systems
+              </h2>
+              <p className="text-muted-foreground mb-8 text-sm max-w-md mx-auto">
+                Dive into wavefunctions, energy spectra, and time evolution — all in your browser.
+                No installation required.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="gap-2 rounded-full px-8 hero-gradient-btn text-primary-foreground border-0"
+                >
+                  <Link to="/quantum">
+                    Launch Quantum Solver <ArrowRight size={16} />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="rounded-full px-8 border-border/50 hover:bg-secondary/50"
+                >
+                  <Link to="/solver">Equation Solver</Link>
+                </Button>
+              </div>
+            </motion.div>
           </GlassCard>
         </div>
       </section>
 
-      <div className="h-20" />
+      {/* ═══════ FOOTER ═══════ */}
+      <footer className="border-t border-border/30 py-10">
+        <div className="container px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary font-mono text-xs font-bold">
+                ψ
+              </div>
+              <span className="text-sm font-semibold text-foreground">
+                Wave<span className="text-primary">Quant</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-6 text-xs text-muted-foreground">
+              <Link to="/solver" className="hover:text-foreground transition-colors">Equations</Link>
+              <Link to="/quantum" className="hover:text-foreground transition-colors">Quantum</Link>
+              <Link to="/graph" className="hover:text-foreground transition-colors">Graphs</Link>
+              <Link to="/library" className="hover:text-foreground transition-colors">Library</Link>
+            </div>
+            <p className="text-xs text-muted-foreground/50">
+              © 2024 WaveQuant. Scientific Precision.
+            </p>
+          </div>
+        </div>
+      </footer>
     </PageLayout>
   );
 };
