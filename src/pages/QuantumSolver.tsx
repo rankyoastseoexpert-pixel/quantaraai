@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
+import ScienceBackground from "@/components/ScienceBackground";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -409,7 +410,8 @@ const QuantumSolver = () => {
 
   return (
     <PageLayout>
-      <div className="container px-4 py-12">
+      <ScienceBackground />
+      <div className="container px-4 py-12 relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2">
             Quantum <span className="text-gradient">Solver</span>
