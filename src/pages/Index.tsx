@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useRef } from "react";
+import { useRef, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
 import FloatingEquations from "@/components/FloatingEquations";
 import HeroWaveAnimation from "@/components/HeroWaveAnimation";
@@ -19,6 +19,9 @@ import {
   Waves,
 } from "lucide-react";
 import FloatingScientificModels from "@/components/FloatingScientificModels";
+import InteractivePeriodicTable from "@/components/InteractivePeriodicTable";
+
+const FloatingMolecule = lazy(() => import("@/components/MolecularModels"));
 
 const stats = [
   { value: "50+", label: "Equation Types" },
@@ -119,6 +122,12 @@ const Index = () => {
       <section ref={heroRef} className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
         <FloatingEquations />
         <HeroWaveAnimation />
+
+        {/* 3D Molecules — lazy loaded, positioned as bg decorations */}
+        <Suspense fallback={null}>
+          <FloatingMolecule type="water" className="absolute left-[3%] top-[10%] w-[180px] h-[180px] hidden lg:block z-0" />
+          <FloatingMolecule type="methane" className="absolute right-[3%] top-[15%] w-[160px] h-[160px] hidden lg:block z-0" />
+        </Suspense>
 
         <div className="pointer-events-none absolute inset-0">
           <div
@@ -368,6 +377,60 @@ const Index = () => {
             </motion.div>
           </div>
         </section>
+      </ParallaxSection>
+
+      {/* ═══════ 3D MOLECULAR MODELS ═══════ */}
+      <ParallaxSection offset={20}>
+        <section className="relative py-24">
+          <div className="container px-4">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                3D <span className="text-gradient">Molecular Models</span>
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+                Interactive Three.js molecular visualizations with accurate geometry and bonding.
+              </p>
+            </motion.div>
+
+            <Suspense fallback={null}>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+                {([
+                  { type: "water" as const, label: "H₂O — Water", desc: "Bent geometry, 104.5° bond angle" },
+                  { type: "methane" as const, label: "CH₄ — Methane", desc: "Tetrahedral, sp³ hybridization" },
+                  { type: "crystal" as const, label: "Cubic Lattice", desc: "3×3×3 crystal unit cell" },
+                  { type: "mg" as const, label: "Mg — HCP", desc: "Hexagonal close-packed structure" },
+                ]).map((mol, i) => (
+                  <motion.div
+                    key={mol.type}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15, duration: 0.6 }}
+                  >
+                    <GlassCard hover className="h-full">
+                      <div className="h-[200px] -mx-2 -mt-2">
+                        <FloatingMolecule type={mol.type} className="w-full h-full" />
+                      </div>
+                      <h3 className="text-sm font-semibold text-foreground font-mono mt-2">{mol.label}</h3>
+                      <p className="text-[11px] text-muted-foreground mt-1">{mol.desc}</p>
+                    </GlassCard>
+                  </motion.div>
+                ))}
+              </div>
+            </Suspense>
+          </div>
+        </section>
+      </ParallaxSection>
+
+      {/* ═══════ INTERACTIVE PERIODIC TABLE ═══════ */}
+      <ParallaxSection offset={15}>
+        <InteractivePeriodicTable />
       </ParallaxSection>
 
       {/* ═══════ INTERACTIVE DEMO PREVIEW ═══════ */}
