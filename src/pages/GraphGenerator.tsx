@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { Play, Download, ZoomIn, ZoomOut, Grid3X3, Sun, Moon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import * as math from "mathjs";
+import * as XLSX from "xlsx";
+import { toast } from "@/hooks/use-toast";
 
 const graphPresets = [
   { name: "Gaussian", eq: "exp(-x^2/2)" },
@@ -148,6 +150,71 @@ const GraphGenerator = () => {
   const chartLine2 = darkTheme ? "#22d3ee" : "#0891b2";
 
   const hasY2 = graphData?.some(d => (d as any).y2 !== undefined);
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const getSvgElement = useCallback(() => {
+    return chartRef.current?.querySelector("svg") ?? null;
+  }, []);
+
+  const exportSVG = useCallback(() => {
+    const svg = getSvgElement();
+    if (!svg) return;
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const blob = new Blob([clone.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "graph.svg"; a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported SVG" });
+  }, [getSvgElement]);
+
+  const exportRaster = useCallback((format: "png" | "jpeg") => {
+    const svg = getSvgElement();
+    if (!svg) return;
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const canvas = document.createElement("canvas");
+    const rect = svg.getBoundingClientRect();
+    const scale = 2;
+    canvas.width = rect.width * scale;
+    canvas.height = rect.height * scale;
+    const ctx = canvas.getContext("2d")!;
+    const img = new Image();
+    img.onload = () => {
+      if (format === "jpeg") {
+        ctx.fillStyle = chartBg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL(`image/${format}`, 0.95);
+      a.download = `graph.${format === "jpeg" ? "jpg" : "png"}`;
+      a.click();
+      toast({ title: `Exported ${format.toUpperCase()}` });
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  }, [getSvgElement, chartBg]);
+
+  const exportXLSX = useCallback(() => {
+    if (!graphData) return;
+    const ws = XLSX.utils.json_to_sheet(graphData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Graph Data");
+    XLSX.writeFile(wb, "graph_data.xlsx");
+    toast({ title: "Exported XLSX" });
+  }, [graphData]);
+
+  const handleExport = useCallback((fmt: string) => {
+    if (!graphData) { toast({ title: "No data to export", description: "Generate a graph first." }); return; }
+    switch (fmt) {
+      case "SVG": exportSVG(); break;
+      case "PNG": exportRaster("png"); break;
+      case "JPG": exportRaster("jpeg"); break;
+      case "XLSX": exportXLSX(); break;
+    }
+  }, [graphData, exportSVG, exportRaster, exportXLSX]);
 
   return (
     <PageLayout>
@@ -272,7 +339,7 @@ const GraphGenerator = () => {
               </div>
 
               {graphData ? (
-                <div className="rounded-lg overflow-hidden border border-border/50" style={{ backgroundColor: chartBg }}>
+                <div ref={chartRef} className="rounded-lg overflow-hidden border border-border/50" style={{ backgroundColor: chartBg }}>
                   <ResponsiveContainer width="100%" height={340}>
                     <LineChart data={graphData} margin={{ top: 10, right: 20, bottom: 10, left: 10 }}>
                       {showGrid && <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />}
@@ -307,7 +374,7 @@ const GraphGenerator = () => {
               <h2 className="text-sm font-semibold text-foreground mb-3">Export</h2>
               <div className="flex flex-wrap gap-2">
                 {["SVG", "PNG", "JPG", "XLSX"].map(fmt => (
-                  <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary">
+                  <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary" onClick={() => handleExport(fmt)}>
                     <Download size={12} /> {fmt}
                   </Button>
                 ))}
