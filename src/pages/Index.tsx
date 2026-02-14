@@ -18,8 +18,7 @@ import {
   ChevronRight,
   Waves,
 } from "lucide-react";
-import BohrModelWidget from "@/components/BohrModelWidget";
-import PeriodicTableCard from "@/components/PeriodicTableCard";
+import FloatingScientificModels from "@/components/FloatingScientificModels";
 
 const stats = [
   { value: "50+", label: "Equation Types" },
@@ -114,13 +113,12 @@ const Index = () => {
   return (
     <PageLayout>
       <ScienceBackground />
+      <FloatingScientificModels />
 
       {/* ═══════ HERO ═══════ */}
       <section ref={heroRef} className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
         <FloatingEquations />
         <HeroWaveAnimation />
-        <BohrModelWidget />
-        <PeriodicTableCard />
 
         <div className="pointer-events-none absolute inset-0">
           <div
