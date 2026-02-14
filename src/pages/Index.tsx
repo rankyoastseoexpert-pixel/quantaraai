@@ -349,14 +349,14 @@ const Index = () => {
               viewport={{ once: true, margin: "-80px" }}
             >
               {features.map((f, i) => (
-                <motion.div key={f.title} variants={staggerItem}>
-                  <GlassCard hover className="h-full group">
+                <motion.div key={f.title} variants={staggerItem} className="group">
+                  <GlassCard hover tilt className="h-full">
                     <motion.div
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 mb-4"
-                      whileHover={{ rotate: 15, scale: 1.1 }}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 mb-4 transition-all duration-300 group-hover:bg-primary/20 group-hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
+                      whileHover={{ rotate: 15, scale: 1.15 }}
                       transition={{ type: "spring", stiffness: 300 }}
                     >
-                      <f.icon className="h-5 w-5 text-primary" strokeWidth={1.5} />
+                      <f.icon className="h-5 w-5 text-primary transition-transform duration-300 group-hover:scale-110" strokeWidth={1.5} />
                     </motion.div>
                     <h3 className="text-sm font-semibold mb-2 text-foreground">{f.title}</h3>
                     <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>

@@ -10,6 +10,7 @@ import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
 import PhysicsBackground from "@/components/PhysicsBackground";
+import ScienceBackground from "@/components/ScienceBackground";
 import AnimatedSteps from "@/components/AnimatedSteps";
 
 const diffPresets = [
@@ -346,6 +347,7 @@ const EquationSolver = () => {
 
   return (
     <PageLayout>
+      <ScienceBackground />
       <div className="relative container px-4 py-12">
         <PhysicsBackground />
 
