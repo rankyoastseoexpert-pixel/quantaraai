@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { motion, AnimatePresence } from "framer-motion";
+import quantaraLogo from "@/assets/quantara-logo.png";
 
 const navItems = [
   { label: "Home", path: "/" },
@@ -22,11 +23,13 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary font-mono text-base font-bold glow-border">
-            ψ
-          </div>
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            Wave<span className="text-primary">Quant</span>
+          <img
+            src={quantaraLogo}
+            alt="Quantara AI"
+            className="h-9 w-auto"
+          />
+          <span className="text-lg font-bold tracking-tight text-foreground hidden sm:block">
+            Quantara<span className="text-primary">AI</span>
           </span>
         </Link>
 
