@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen } from "lucide-react";
+import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen, FlaskConical } from "lucide-react";
 import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
 import PhysicsBackground from "@/components/PhysicsBackground";
 import ScienceBackground from "@/components/ScienceBackground";
 import AnimatedSteps from "@/components/AnimatedSteps";
+import DerivativeStepsView from "@/components/DerivativeStepsView";
+import { solveDerivative, derivativePresets, type DerivativeResult } from "@/lib/derivativeEngine";
 
 const diffPresets = [
   { name: "First-order ODE", eq: "y' + P(x)y = Q(x)", key: "First-order ODE" },
@@ -174,6 +176,11 @@ const EquationSolver = () => {
   const [selectedDiffType, setSelectedDiffType] = useState<string | null>(null);
   const [diffSolution, setDiffSolution] = useState<typeof solutions[string] | null>(null);
 
+  // Derivative calculator state
+  const [derivInput, setDerivInput] = useState("");
+  const [derivResult, setDerivResult] = useState<DerivativeResult | null>(null);
+  const [derivError, setDerivError] = useState<string | null>(null);
+
   // Custom equations
   const [customEquations, setCustomEquations] = useState<CustomEquation[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -182,6 +189,19 @@ const EquationSolver = () => {
   const [customSolution, setCustomSolution] = useState("");
   const [customExplanation, setCustomExplanation] = useState("");
   const [customStepsRaw, setCustomStepsRaw] = useState("");
+
+  const handleSolveDerivative = () => {
+    setDerivError(null);
+    setDerivResult(null);
+    const input = derivInput.trim();
+    if (!input) { setDerivError("Please enter an expression to differentiate."); return; }
+    try {
+      const result = solveDerivative(input);
+      setDerivResult(result);
+    } catch (e: any) {
+      setDerivError(`Could not parse expression: ${e.message}`);
+    }
+  };
 
   const addCustomEquation = () => {
     if (!customName.trim() || !customEq.trim()) return;
@@ -426,8 +446,11 @@ const EquationSolver = () => {
         </motion.div>
 
         <Tabs defaultValue="linear" className="space-y-6 relative z-10">
-          <TabsList className="glass-card !p-1 !rounded-xl border-glass-border/30">
+          <TabsList className="glass-card !p-1 !rounded-xl border-glass-border/30 flex-wrap h-auto gap-1">
             <TabsTrigger value="linear" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Linear</TabsTrigger>
+            <TabsTrigger value="derivative" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+              <FlaskConical size={12} /> Derivative
+            </TabsTrigger>
             <TabsTrigger value="differential" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Differential</TabsTrigger>
             <TabsTrigger value="matrix" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Matrix</TabsTrigger>
             <TabsTrigger value="presets" className="rounded-lg data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Presets</TabsTrigger>
@@ -493,6 +516,117 @@ const EquationSolver = () => {
                   <LinearSolverGraph m={linearGraph.m} c={linearGraph.c} />
                 </div>
               )}
+            </GlassCard>
+          </TabsContent>
+
+          {/* Derivative Calculator */}
+          <TabsContent value="derivative">
+            <GlassCard glow>
+              <div className="flex items-center gap-2 mb-1">
+                <FlaskConical size={16} className="text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Derivative Calculator</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Symbolic differentiation using direct rules only — Power, Trig, Exponential, Log, Product, Quotient, Chain.
+                <span className="text-amber-400 ml-1">No integration. No ODE solving.</span>
+              </p>
+
+              {/* Presets */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <BookOpen size={11} className="text-primary" /> Example Expressions
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {derivativePresets.map((p, i) => (
+                    <motion.button
+                      key={p.label}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => { setDerivInput(p.expr); setDerivResult(null); setDerivError(null); }}
+                      className={`text-left px-3 py-2 rounded-lg border text-xs transition-all duration-200 ${
+                        derivInput === p.expr
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/40 bg-secondary/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      <span className="font-semibold block text-foreground/80">{p.label}</span>
+                      <span className="font-mono text-[10px]">{p.desc}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">
+                    Expression <span className="text-primary font-mono">f(x)</span> — the solver computes d/dx(f(x))
+                  </label>
+                  <div className="flex gap-3">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono select-none">d/dx</span>
+                      <Input
+                        value={derivInput}
+                        onChange={(e) => { setDerivInput(e.target.value); setDerivResult(null); setDerivError(null); }}
+                        onKeyDown={(e) => e.key === "Enter" && handleSolveDerivative()}
+                        placeholder="e.g. x^3 + sin(x)  or  e^(x^2)"
+                        className="bg-secondary/50 border-border font-mono pl-12"
+                      />
+                    </div>
+                    <Button onClick={handleSolveDerivative} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
+                      <Play size={14} /> Differentiate
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
+                  {["sin(x)", "cos(x)", "tan(x)", "e^x", "ln(x)", "x^n"].map(hint => (
+                    <span key={hint} className="font-mono bg-secondary/50 px-2 py-0.5 rounded text-[11px]">{hint}</span>
+                  ))}
+                  <span className="text-muted-foreground/60">— accepted syntax</span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-border text-muted-foreground"
+                  onClick={() => { setDerivInput(""); setDerivResult(null); setDerivError(null); }}
+                >
+                  <RotateCcw size={13} /> Clear
+                </Button>
+              </div>
+
+              {/* Error */}
+              <AnimatePresence>
+                {derivError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-xs text-destructive"
+                  >
+                    {derivError}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Result */}
+              <div className="mt-6">
+                <AnimatePresence mode="wait">
+                  {derivResult ? (
+                    <motion.div key={derivResult.input} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <DerivativeStepsView result={derivResult} />
+                    </motion.div>
+                  ) : !derivError ? (
+                    <div className="glass-card !p-6">
+                      <p className="text-center text-muted-foreground text-sm">
+                        Enter an expression or select an example above, then click <span className="text-primary font-semibold">Differentiate</span>.
+                      </p>
+                    </div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
             </GlassCard>
           </TabsContent>
 
