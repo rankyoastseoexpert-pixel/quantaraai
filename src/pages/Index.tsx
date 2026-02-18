@@ -2,6 +2,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useRef, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
+import quantaraLogo from "@/assets/quantara-logo.png";
 import FloatingEquations from "@/components/FloatingEquations";
 import HeroWaveAnimation from "@/components/HeroWaveAnimation";
 import ScienceBackground from "@/components/ScienceBackground";
@@ -157,22 +158,27 @@ const Index = () => {
               Research-Grade Scientific Platform
             </motion.div>
 
-            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight mb-6 leading-[0.95]">
-              <motion.span
-                className="text-foreground inline-block"
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-              >
-                WAVE{" "}
-              </motion.span>
+            <motion.div
+              className="mb-6 flex justify-center"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.7 }}
+            >
+              <img
+                src={quantaraLogo}
+                alt="Quantara AI Logo"
+                className="h-20 sm:h-28 lg:h-36 w-auto drop-shadow-[0_0_30px_hsl(var(--primary)/0.4)]"
+              />
+            </motion.div>
+
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight mb-4 leading-[0.95]">
               <motion.span
                 className="text-gradient glow-text inline-block"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
               >
-                QUANT
+                Quantum Problem Solver
               </motion.span>
             </h1>
 
@@ -612,11 +618,9 @@ const Index = () => {
         <div className="container px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary font-mono text-xs font-bold">
-                ψ
-              </div>
+              <img src={quantaraLogo} alt="Quantara AI" className="h-7 w-auto" />
               <span className="text-sm font-semibold text-foreground">
-                Wave<span className="text-primary">Quant</span>
+                Quantara<span className="text-primary">AI</span>
               </span>
             </div>
             <div className="flex items-center gap-6 text-xs text-muted-foreground">
@@ -626,7 +630,7 @@ const Index = () => {
               <Link to="/library" className="hover:text-foreground transition-colors">Library</Link>
             </div>
             <p className="text-xs text-muted-foreground/50">
-              © 2024 WaveQuant. Scientific Precision.
+              © 2024 Quantara AI. Quantum Problem Solver.
             </p>
           </div>
         </div>
