@@ -173,12 +173,20 @@ const Index = () => {
 
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight mb-4 leading-[0.95]">
               <motion.span
-                className="text-gradient glow-text inline-block"
+                className="text-foreground inline-block"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.6 }}
               >
-                Quantum Problem Solver
+                Quantara{" "}
+              </motion.span>
+              <motion.span
+                className="text-gradient glow-text inline-block"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.6 }}
+              >
+                AI
               </motion.span>
             </h1>
 
