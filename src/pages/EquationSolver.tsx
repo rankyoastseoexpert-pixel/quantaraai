@@ -3,9 +3,10 @@ import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { motion } from "framer-motion";
-import { Play, RotateCcw, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen } from "lucide-react";
 import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
@@ -14,12 +15,14 @@ import ScienceBackground from "@/components/ScienceBackground";
 import AnimatedSteps from "@/components/AnimatedSteps";
 
 const diffPresets = [
-  { name: "Legendre Equation", eq: "(1-x²)y'' - 2xy' + l(l+1)y = 0" },
-  { name: "Bessel Equation", eq: "x²y'' + xy' + (x²-n²)y = 0" },
-  { name: "Heat Equation", eq: "∂u/∂t = α∇²u" },
-  { name: "Wave Equation", eq: "∂²u/∂t² = c²∇²u" },
-  { name: "Laplace Equation", eq: "∇²u = 0" },
-  { name: "Helmholtz Equation", eq: "∇²f + k²f = 0" },
+  { name: "First-order ODE", eq: "y' + P(x)y = Q(x)", key: "First-order ODE" },
+  { name: "Second-order ODE", eq: "y'' + py' + qy = 0", key: "Second-order ODE" },
+  { name: "Legendre Equation", eq: "(1-x²)y'' - 2xy' + l(l+1)y = 0", key: "Legendre ODE" },
+  { name: "Bessel Equation", eq: "x²y'' + xy' + (x²-n²)y = 0", key: "Bessel ODE" },
+  { name: "Heat Equation", eq: "∂u/∂t = α∇²u", key: "Heat Equation" },
+  { name: "Wave Equation", eq: "∂²u/∂t² = c²∇²u", key: "Wave Equation" },
+  { name: "Laplace Equation", eq: "∇²u = 0", key: "Laplace Equation" },
+  { name: "Helmholtz Equation", eq: "∇²f + k²f = 0", key: "Helmholtz Equation" },
 ];
 
 const integralPresets = [
@@ -132,7 +135,30 @@ const solutions: Record<string, { equation: string; steps: string[]; solution: s
     solution: "u(x,y) = Σ [Aₙcosh(nπy/L) + Bₙsinh(nπy/L)]sin(nπx/L)",
     explanation: "Laplace's equation governs steady-state heat, electrostatics, and potential flow. Solutions (harmonic functions) satisfy the mean value property — the value at any point equals the average over surrounding points.",
   },
+  "Helmholtz Equation": {
+    equation: "∇²f + k²f = 0",
+    steps: [
+      "Recognize as the Helmholtz equation with wave number k",
+      "In 1D Cartesian: d²f/dx² + k²f = 0",
+      "Characteristic equation: r² + k² = 0 → r = ±ik",
+      "General solution: f(x) = A e^(ikx) + B e^(-ikx)",
+      "Using Euler's formula: f(x) = C cos(kx) + D sin(kx)",
+      "In 3D, separate variables: f = X(x)Y(y)Z(z)",
+      "Each factor satisfies its own oscillatory ODE with k² split among axes",
+    ],
+    solution: "f(x) = C cos(kx) + D sin(kx)  [1D case]",
+    explanation: "The Helmholtz equation arises from separating the time-independent wave equation. Solutions are standing waves. It governs resonance in cavities, diffraction, and quantum mechanics (time-independent Schrödinger equation).",
+  },
 };
+
+interface CustomEquation {
+  id: string;
+  name: string;
+  equation: string;
+  steps: string[];
+  solution: string;
+  explanation: string;
+}
 
 const EquationSolver = () => {
   const [equation, setEquation] = useState("");
@@ -147,6 +173,43 @@ const EquationSolver = () => {
   const [diffEqInput, setDiffEqInput] = useState("");
   const [selectedDiffType, setSelectedDiffType] = useState<string | null>(null);
   const [diffSolution, setDiffSolution] = useState<typeof solutions[string] | null>(null);
+
+  // Custom equations
+  const [customEquations, setCustomEquations] = useState<CustomEquation[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customEq, setCustomEq] = useState("");
+  const [customSolution, setCustomSolution] = useState("");
+  const [customExplanation, setCustomExplanation] = useState("");
+  const [customStepsRaw, setCustomStepsRaw] = useState("");
+
+  const addCustomEquation = () => {
+    if (!customName.trim() || !customEq.trim()) return;
+    const steps = customStepsRaw.split("\n").map(s => s.trim()).filter(Boolean);
+    const newEq: CustomEquation = {
+      id: Date.now().toString(),
+      name: customName.trim(),
+      equation: customEq.trim(),
+      steps: steps.length > 0 ? steps : [`Given: ${customEq.trim()}`, "Apply appropriate method", "Solve for the unknown function"],
+      solution: customSolution.trim() || "Solution depends on boundary conditions",
+      explanation: customExplanation.trim() || "User-defined equation.",
+    };
+    setCustomEquations(prev => [...prev, newEq]);
+    setCustomName(""); setCustomEq(""); setCustomSolution(""); setCustomExplanation(""); setCustomStepsRaw("");
+    setShowAddForm(false);
+  };
+
+  const removeCustomEquation = (id: string) => {
+    setCustomEquations(prev => prev.filter(e => e.id !== id));
+    if (selectedDiffType === id) { setSelectedDiffType(null); setDiffSolution(null); }
+  };
+
+  const solveCustomDiff = (eq: CustomEquation) => {
+    setSelectedDiffType(eq.id);
+    setDiffSolution(null);
+    setDiffEqInput(eq.equation);
+    setTimeout(() => setDiffSolution({ equation: eq.equation, steps: eq.steps, solution: eq.solution, explanation: eq.explanation }), 50);
+  };
 
   const updateMatrix = (r: number, c: number, val: string) => {
     const copy = matrixValues.map(row => [...row]);
@@ -331,18 +394,20 @@ const EquationSolver = () => {
   };
 
   const solveDiff = () => {
-    if (!selectedDiffType) {
-      setDiffSolution(null);
-      return;
-    }
+    if (!selectedDiffType) { setDiffSolution(null); return; }
+    // Check built-in solutions first
     const sol = solutions[selectedDiffType];
-    if (!sol) {
+    if (sol) {
       setDiffSolution(null);
+      setTimeout(() => setDiffSolution(sol), 50);
       return;
     }
-    // Trigger re-render of AnimatedSteps with new key
-    setDiffSolution(null);
-    setTimeout(() => setDiffSolution(sol), 50);
+    // Check custom equations
+    const custom = customEquations.find(e => e.id === selectedDiffType);
+    if (custom) {
+      setDiffSolution(null);
+      setTimeout(() => setDiffSolution({ equation: custom.equation, steps: custom.steps, solution: custom.solution, explanation: custom.explanation }), 50);
+    }
   };
 
   return (
@@ -434,35 +499,145 @@ const EquationSolver = () => {
           {/* Differential */}
           <TabsContent value="differential">
             <GlassCard glow>
-              <h2 className="text-lg font-semibold mb-4 text-foreground">Differential Equation Solver</h2>
-              <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                {Object.keys(solutions).map((t, i) => (
-                  <motion.div
-                    key={t}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Button
-                      variant="outline"
-                      className={`w-full justify-start border-border transition-all duration-300 ${
-                        selectedDiffType === t
-                          ? "bg-primary/15 border-primary/40 text-primary glow-border"
-                          : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-                      }`}
-                      onClick={() => { setSelectedDiffType(t); setDiffSolution(null); }}
-                    >
-                      {t}
-                    </Button>
-                  </motion.div>
-                ))}
+              <h2 className="text-lg font-semibold mb-1 text-foreground">Differential Equation Solver</h2>
+              <p className="text-xs text-muted-foreground mb-4">Select a built-in type or add your own equation below.</p>
+
+              {/* Built-in presets */}
+              <div className="mb-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <BookOpen size={11} className="text-primary" /> Built-in Equations
+                </p>
+                <div className="grid sm:grid-cols-2 gap-2 mb-4">
+                  {Object.keys(solutions).map((t, i) => (
+                    <motion.div key={t} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start border-border transition-all duration-300 text-sm ${
+                          selectedDiffType === t
+                            ? "bg-primary/15 border-primary/40 text-primary glow-border"
+                            : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                        }`}
+                        onClick={() => { setSelectedDiffType(t); setDiffSolution(null); setDiffEqInput(solutions[t].equation); }}
+                      >
+                        {t}
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
 
+              {/* Custom equations */}
+              {customEquations.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Plus size={11} className="text-primary" /> My Equations
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <AnimatePresence>
+                      {customEquations.map((eq) => (
+                        <motion.div
+                          key={eq.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                        >
+                          <div className={`flex items-center gap-1 rounded-md border transition-all ${
+                            selectedDiffType === eq.id
+                              ? "border-primary/40 bg-primary/10"
+                              : "border-border bg-secondary/30 hover:border-primary/30"
+                          }`}>
+                            <button
+                              className="flex-1 text-left px-3 py-2 text-sm font-medium truncate"
+                              onClick={() => solveCustomDiff(eq)}
+                            >
+                              <span className={selectedDiffType === eq.id ? "text-primary" : "text-foreground"}>{eq.name}</span>
+                              <span className="block font-mono text-xs text-muted-foreground truncate">{eq.equation}</span>
+                            </button>
+                            <button
+                              onClick={() => removeCustomEquation(eq.id)}
+                              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+
+              {/* Add custom equation toggle */}
+              <div className="mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/10 w-full"
+                  onClick={() => setShowAddForm(v => !v)}
+                >
+                  <Plus size={13} /> {showAddForm ? "Cancel" : "Add My Own Equation"}
+                </Button>
+
+                <AnimatePresence>
+                  {showAddForm && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
+                        <p className="text-xs font-semibold text-primary">New Equation</p>
+                        <Input
+                          placeholder="Name (e.g. Schrödinger Equation)"
+                          value={customName}
+                          onChange={e => setCustomName(e.target.value)}
+                          className="bg-background/60 border-border font-mono text-sm"
+                        />
+                        <Input
+                          placeholder="Equation (e.g. iℏ ∂ψ/∂t = Ĥψ)"
+                          value={customEq}
+                          onChange={e => setCustomEq(e.target.value)}
+                          className="bg-background/60 border-border font-mono text-sm"
+                        />
+                        <Input
+                          placeholder="Final solution (e.g. ψ(x,t) = ...)"
+                          value={customSolution}
+                          onChange={e => setCustomSolution(e.target.value)}
+                          className="bg-background/60 border-border font-mono text-sm"
+                        />
+                        <Textarea
+                          placeholder={"Steps (one per line):\nStep 1: Identify the operator...\nStep 2: Expand Hamiltonian..."}
+                          value={customStepsRaw}
+                          onChange={e => setCustomStepsRaw(e.target.value)}
+                          className="bg-background/60 border-border font-mono text-xs min-h-[90px]"
+                        />
+                        <Textarea
+                          placeholder="Explanation / physical meaning..."
+                          value={customExplanation}
+                          onChange={e => setCustomExplanation(e.target.value)}
+                          className="bg-background/60 border-border text-xs min-h-[60px]"
+                        />
+                        <Button
+                          onClick={addCustomEquation}
+                          disabled={!customName.trim() || !customEq.trim()}
+                          className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                          size="sm"
+                        >
+                          <Plus size={13} /> Add Equation
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Input & solve */}
               <div className="space-y-3">
                 <Input
                   value={diffEqInput}
                   onChange={(e) => setDiffEqInput(e.target.value)}
-                  placeholder="Enter differential equation..."
+                  placeholder="Enter or edit differential equation..."
                   className="bg-secondary/50 border-border font-mono"
                 />
                 <Input placeholder="Boundary conditions (optional)..." className="bg-secondary/50 border-border font-mono" />
@@ -494,6 +669,7 @@ const EquationSolver = () => {
               </div>
             </GlassCard>
           </TabsContent>
+
 
           {/* Matrix */}
           <TabsContent value="matrix">
@@ -566,7 +742,7 @@ const EquationSolver = () => {
               <div className="grid sm:grid-cols-2 gap-3">
                 {diffPresets.map((p, i) => (
                   <motion.div key={p.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-                    <GlassCard hover className="cursor-pointer !p-4" onClick={() => { setSelectedDiffType(p.name.replace(" Equation", " ODE").replace("Heat ODE", "Heat Equation").replace("Wave ODE", "Wave Equation").replace("Laplace ODE", "Laplace Equation").replace("Helmholtz ODE", "Helmholtz Equation")); setDiffEqInput(p.eq); }}>
+                    <GlassCard hover className="cursor-pointer !p-4" onClick={() => { setSelectedDiffType(p.key); setDiffEqInput(p.eq); }}>
                       <h3 className="text-sm font-semibold text-foreground mb-1">{p.name}</h3>
                       <p className="font-mono text-primary text-xs">{p.eq}</p>
                     </GlassCard>
