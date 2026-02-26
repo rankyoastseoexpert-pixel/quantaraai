@@ -11,7 +11,8 @@ const navItems = [
   { label: "Equation Solver", path: "/solver" },
   { label: "Quantum Solver", path: "/quantum" },
   { label: "Graph Generator", path: "/graph" },
-  { label: "Quantum Library", path: "/library" },
+  { label: "Quantum Lab", path: "/lab" },
+  { label: "Library", path: "/library" },
 ];
 
 const Navbar = () => {
