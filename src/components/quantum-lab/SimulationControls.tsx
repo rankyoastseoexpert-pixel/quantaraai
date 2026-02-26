@@ -29,6 +29,12 @@ interface Props {
   setShow3D: (v: boolean) => void;
   showPhase: boolean;
   setShowPhase: (v: boolean) => void;
+  // Interference mode
+  interferenceEnabled: boolean;
+  setInterferenceEnabled: (v: boolean) => void;
+  x02: number; setX02: (v: number) => void;
+  k02: number; setK02: (v: number) => void;
+  sigma2: number; setSigma2: (v: number) => void;
 }
 
 const potentials: { key: PotentialType; label: string }[] = [
@@ -146,6 +152,23 @@ const SimulationControls = (props: Props) => {
           <SliderRow label="x₀ (center)" value={props.x0} min={-8} max={8} step={0.1} onChange={props.setX0} />
           <SliderRow label="k₀ (momentum)" value={props.k0} min={-15} max={15} step={0.5} onChange={props.setK0} />
           <SliderRow label="σ (width)" value={props.sigma} min={0.1} max={3} step={0.05} onChange={props.setSigma} />
+        </div>
+
+        {/* Interference mode */}
+        <div className="mt-3 pt-3 border-t border-border/30">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer mb-2">
+            <input type="checkbox" checked={props.interferenceEnabled} onChange={e => props.setInterferenceEnabled(e.target.checked)}
+              className="rounded border-border" />
+            <span className="font-semibold text-foreground">Interference Mode</span>
+          </label>
+          {props.interferenceEnabled && (
+            <div className="space-y-2 pl-1">
+              <p className="text-[8px] text-muted-foreground">Second wave packet (counter-propagating)</p>
+              <SliderRow label="x₀'" value={props.x02} min={-8} max={8} step={0.1} onChange={props.setX02} />
+              <SliderRow label="k₀'" value={props.k02} min={-15} max={15} step={0.5} onChange={props.setK02} />
+              <SliderRow label="σ'" value={props.sigma2} min={0.1} max={3} step={0.05} onChange={props.setSigma2} />
+            </div>
+          )}
         </div>
       </GlassCard>
 

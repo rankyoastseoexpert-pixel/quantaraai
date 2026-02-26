@@ -114,6 +114,13 @@ export interface InitialStateParams {
   sigma: number;
 }
 
+export interface SecondPacketParams {
+  enabled: boolean;
+  x0: number;
+  k0: number;
+  sigma: number;
+}
+
 // ── Initialize simulation ──
 export function initSimulation(
   N: number,
@@ -122,7 +129,8 @@ export function initSimulation(
   dt: number,
   potentialParams: PotentialParams,
   bc: BoundaryCondition,
-  initialState: InitialStateParams = { type: "gaussian", x0: -2, k0: 5, sigma: 0.5 }
+  initialState: InitialStateParams = { type: "gaussian", x0: -2, k0: 5, sigma: 0.5 },
+  secondPacket?: SecondPacketParams
 ): SimState {
   const dx = (xMax - xMin) / (N - 1);
   const x = new Float64Array(N);
@@ -208,6 +216,16 @@ export function initSimulation(
         }
       }
       break;
+  }
+
+  // Add second wave packet (interference mode)
+  if (secondPacket?.enabled) {
+    const { x0: x02, k0: k02, sigma: sig2 } = secondPacket;
+    for (let i = 0; i < N; i++) {
+      const gauss = Math.exp(-((x[i] - x02) ** 2) / (4 * sig2 * sig2));
+      const phase = k02 * x[i];
+      psi[i] = cadd(psi[i], [gauss * Math.cos(phase), gauss * Math.sin(phase)]);
+    }
   }
 
   // Normalize

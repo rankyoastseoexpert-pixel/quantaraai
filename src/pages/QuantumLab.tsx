@@ -21,6 +21,7 @@ import {
   type ExpectationValues,
   type MeasurementRecord,
   type PlotPoint,
+  type SecondPacketParams,
 } from "@/lib/quantumSimulator";
 
 const Wavefunction3D = lazy(() => import("@/components/quantum-lab/Wavefunction3D"));
@@ -49,6 +50,12 @@ const QuantumLab = () => {
   const [sigma, setSigma] = useState(0.5);
   const [initialState, setInitialState] = useState<InitialStateType>("gaussian");
 
+  // Interference mode
+  const [interferenceEnabled, setInterferenceEnabled] = useState(false);
+  const [x02, setX02] = useState(2);
+  const [k02, setK02] = useState(-5);
+  const [sigma2, setSigma2] = useState(0.5);
+
   // Solver
   const [dt, setDt] = useState(0.005);
   const [gridSize, setGridSize] = useState(256);
@@ -73,10 +80,14 @@ const QuantumLab = () => {
   const resetSim = useCallback(() => {
     setPlaying(false);
     cancelAnimationFrame(animRef.current);
+    const secondPkt: SecondPacketParams | undefined = interferenceEnabled
+      ? { enabled: true, x0: x02, k0: k02, sigma: sigma2 }
+      : undefined;
     const sim = initSimulation(
       gridSize, -10, 10, dt,
       { type: potential, V0, width, omega, separation },
-      bc, { type: initialState, x0, k0, sigma }
+      bc, { type: initialState, x0, k0, sigma },
+      secondPkt
     );
     simRef.current = sim;
     const pd = getPlotData(sim);
@@ -87,7 +98,7 @@ const QuantumLab = () => {
     setHistoryBuffer([pd]);
     setMeasurements([]);
     setLastMeasurement(null);
-  }, [potential, bc, V0, omega, width, separation, x0, k0, sigma, dt, gridSize, initialState]);
+  }, [potential, bc, V0, omega, width, separation, x0, k0, sigma, dt, gridSize, initialState, interferenceEnabled, x02, k02, sigma2]);
 
   // Init on mount and param change
   useEffect(() => { resetSim(); }, [resetSim]);
@@ -202,6 +213,10 @@ const QuantumLab = () => {
               onMeasureMom={handleMeasureMom}
               show3D={show3D} setShow3D={setShow3D}
               showPhase={showPhase} setShowPhase={setShowPhase}
+              interferenceEnabled={interferenceEnabled} setInterferenceEnabled={setInterferenceEnabled}
+              x02={x02} setX02={setX02}
+              k02={k02} setK02={setK02}
+              sigma2={sigma2} setSigma2={setSigma2}
             />
           </div>
 
