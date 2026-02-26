@@ -104,6 +104,16 @@ export interface MeasurementRecord {
   type: "position" | "momentum";
 }
 
+// ── Initial state types ──
+export type InitialStateType = "gaussian" | "coherent" | "cat" | "squeezed" | "plane_wave" | "eigenstate";
+
+export interface InitialStateParams {
+  type: InitialStateType;
+  x0: number;
+  k0: number;
+  sigma: number;
+}
+
 // ── Initialize simulation ──
 export function initSimulation(
   N: number,
@@ -112,7 +122,7 @@ export function initSimulation(
   dt: number,
   potentialParams: PotentialParams,
   bc: BoundaryCondition,
-  initialWavepacket: { x0: number; k0: number; sigma: number } = { x0: -2, k0: 5, sigma: 0.5 }
+  initialState: InitialStateParams = { type: "gaussian", x0: -2, k0: 5, sigma: 0.5 }
 ): SimState {
   const dx = (xMax - xMin) / (N - 1);
   const x = new Float64Array(N);
@@ -124,12 +134,80 @@ export function initSimulation(
   for (let i = 0; i < N; i++) {
     x[i] = xMin + i * dx;
     potential[i] = computePotential(x[i], potentialParams);
+  }
 
-    // Gaussian wave packet
-    const { x0, k0, sigma } = initialWavepacket;
-    const gauss = Math.exp(-((x[i] - x0) ** 2) / (4 * sigma * sigma));
-    const phase = k0 * x[i];
-    psi[i] = [gauss * Math.cos(phase), gauss * Math.sin(phase)];
+  const { x0, k0, sigma } = initialState;
+
+  switch (initialState.type) {
+    case "gaussian":
+    default:
+      for (let i = 0; i < N; i++) {
+        const gauss = Math.exp(-((x[i] - x0) ** 2) / (4 * sigma * sigma));
+        const phase = k0 * x[i];
+        psi[i] = [gauss * Math.cos(phase), gauss * Math.sin(phase)];
+      }
+      break;
+
+    case "coherent":
+      // Coherent state: displaced Gaussian ground state of harmonic oscillator
+      // ψ(x) = (mω/πℏ)^{1/4} exp(-(x-x0)²mω/(2ℏ)) exp(ik0·x)
+      for (let i = 0; i < N; i++) {
+        const omega_eff = potentialParams.omega || 1;
+        const sig_co = 1 / Math.sqrt(2 * omega_eff); // natural width
+        const gauss = Math.exp(-((x[i] - x0) ** 2) / (4 * sig_co * sig_co));
+        const phase = k0 * x[i];
+        psi[i] = [gauss * Math.cos(phase), gauss * Math.sin(phase)];
+      }
+      break;
+
+    case "cat":
+      // Schrödinger cat state: superposition of two Gaussians
+      // ψ(x) = N[exp(-(x-a)²/4σ²)e^{ik0x} + exp(-(x+a)²/4σ²)e^{-ik0x}]
+      for (let i = 0; i < N; i++) {
+        const sep = Math.max(Math.abs(x0), 2); // separation from origin
+        const g1 = Math.exp(-((x[i] - sep) ** 2) / (4 * sigma * sigma));
+        const g2 = Math.exp(-((x[i] + sep) ** 2) / (4 * sigma * sigma));
+        const re = g1 * Math.cos(k0 * x[i]) + g2 * Math.cos(-k0 * x[i]);
+        const im = g1 * Math.sin(k0 * x[i]) + g2 * Math.sin(-k0 * x[i]);
+        psi[i] = [re, im];
+      }
+      break;
+
+    case "squeezed":
+      // Squeezed state: Gaussian with reduced position uncertainty
+      // σ_squeezed = σ * squeeze_factor (< 1 means position-squeezed)
+      for (let i = 0; i < N; i++) {
+        const squeeze = 0.3; // squeeze factor
+        const sig_sq = sigma * squeeze;
+        const gauss = Math.exp(-((x[i] - x0) ** 2) / (4 * sig_sq * sig_sq));
+        const phase = k0 * x[i];
+        psi[i] = [gauss * Math.cos(phase), gauss * Math.sin(phase)];
+      }
+      break;
+
+    case "plane_wave":
+      // Plane wave with soft envelope
+      for (let i = 0; i < N; i++) {
+        const envelope = Math.exp(-((x[i] - x0) ** 2) / (4 * 25)); // very wide
+        const phase = k0 * x[i];
+        psi[i] = [envelope * Math.cos(phase), envelope * Math.sin(phase)];
+      }
+      break;
+
+    case "eigenstate":
+      // n=1 eigenstate of infinite well centered at 0, width = 2*|x0| or 10
+      {
+        const L = Math.max(Math.abs(x0) * 2, 8);
+        const n = Math.max(1, Math.round(Math.abs(k0)));
+        for (let i = 0; i < N; i++) {
+          if (Math.abs(x[i]) < L / 2) {
+            psi[i] = [Math.sqrt(2 / L) * Math.sin((n * Math.PI * (x[i] + L / 2)) / L), 0];
+          } else {
+            psi[i] = [0, 0];
+          }
+        }
+      }
+      break;
   }
 
   // Normalize

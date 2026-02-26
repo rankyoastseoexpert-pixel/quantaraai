@@ -3,7 +3,7 @@ import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, RotateCcw, Crosshair, Waves } from "lucide-react";
-import type { PotentialType, BoundaryCondition } from "@/lib/quantumSimulator";
+import type { PotentialType, BoundaryCondition, InitialStateType } from "@/lib/quantumSimulator";
 
 interface Props {
   potential: PotentialType;
@@ -17,6 +17,7 @@ interface Props {
   x0: number; setX0: (v: number) => void;
   k0: number; setK0: (v: number) => void;
   sigma: number; setSigma: (v: number) => void;
+  initialState: InitialStateType; setInitialState: (v: InitialStateType) => void;
   dt: number; setDt: (v: number) => void;
   gridSize: number; setGridSize: (v: number) => void;
   playing: boolean;
@@ -46,6 +47,15 @@ const bcs: { key: BoundaryCondition; label: string }[] = [
   { key: "absorbing", label: "Absorbing" },
   { key: "periodic", label: "Periodic" },
   { key: "neumann", label: "Neumann" },
+];
+
+const initialStates: { key: InitialStateType; label: string; desc: string }[] = [
+  { key: "gaussian", label: "Gaussian", desc: "Standard wave packet" },
+  { key: "coherent", label: "Coherent", desc: "HO ground state displaced" },
+  { key: "cat", label: "Cat State", desc: "Two-Gaussian superposition" },
+  { key: "squeezed", label: "Squeezed", desc: "Reduced Δx, increased Δp" },
+  { key: "plane_wave", label: "Plane Wave", desc: "Extended momentum state" },
+  { key: "eigenstate", label: "Eigenstate", desc: "Box eigenfunction" },
 ];
 
 const SliderRow = memo(({ label, value, min, max, step, onChange, unit }: {
@@ -112,9 +122,26 @@ const SimulationControls = (props: Props) => {
         </div>
       </GlassCard>
 
-      {/* Wave packet */}
+      {/* Initial state type */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Initial Wave Packet</h3>
+        <h3 className="text-xs font-semibold text-foreground mb-2">Initial State</h3>
+        <div className="grid grid-cols-2 gap-1 mb-3">
+          {initialStates.map(s => (
+            <button
+              key={s.key}
+              onClick={() => props.setInitialState(s.key)}
+              className={`text-left px-2 py-1.5 rounded-md border transition-colors ${
+                props.initialState === s.key
+                  ? "bg-primary/15 border-primary/30 text-primary"
+                  : "border-border/50 text-muted-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <div className="text-[10px] font-medium">{s.label}</div>
+              <div className="text-[8px] opacity-60">{s.desc}</div>
+            </button>
+          ))}
+        </div>
+        <h3 className="text-xs font-semibold text-foreground mb-2">Wave Packet Parameters</h3>
         <div className="space-y-2">
           <SliderRow label="x₀ (center)" value={props.x0} min={-8} max={8} step={0.1} onChange={props.setX0} />
           <SliderRow label="k₀ (momentum)" value={props.k0} min={-15} max={15} step={0.5} onChange={props.setK0} />

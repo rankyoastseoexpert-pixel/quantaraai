@@ -17,6 +17,7 @@ import {
   type SimState,
   type PotentialType,
   type BoundaryCondition,
+  type InitialStateType,
   type ExpectationValues,
   type MeasurementRecord,
   type PlotPoint,
@@ -46,6 +47,7 @@ const QuantumLab = () => {
   const [x0, setX0] = useState(-2);
   const [k0, setK0] = useState(5);
   const [sigma, setSigma] = useState(0.5);
+  const [initialState, setInitialState] = useState<InitialStateType>("gaussian");
 
   // Solver
   const [dt, setDt] = useState(0.005);
@@ -74,7 +76,7 @@ const QuantumLab = () => {
     const sim = initSimulation(
       gridSize, -10, 10, dt,
       { type: potential, V0, width, omega, separation },
-      bc, { x0, k0, sigma }
+      bc, { type: initialState, x0, k0, sigma }
     );
     simRef.current = sim;
     const pd = getPlotData(sim);
@@ -85,7 +87,7 @@ const QuantumLab = () => {
     setHistoryBuffer([pd]);
     setMeasurements([]);
     setLastMeasurement(null);
-  }, [potential, bc, V0, omega, width, separation, x0, k0, sigma, dt, gridSize]);
+  }, [potential, bc, V0, omega, width, separation, x0, k0, sigma, dt, gridSize, initialState]);
 
   // Init on mount and param change
   useEffect(() => { resetSim(); }, [resetSim]);
@@ -190,6 +192,7 @@ const QuantumLab = () => {
               x0={x0} setX0={setX0}
               k0={k0} setK0={setK0}
               sigma={sigma} setSigma={setSigma}
+              initialState={initialState} setInitialState={setInitialState}
               dt={dt} setDt={setDt}
               gridSize={gridSize} setGridSize={setGridSize}
               playing={playing}
