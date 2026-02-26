@@ -9,6 +9,7 @@ import EquationSolver from "./pages/EquationSolver";
 import QuantumSolver from "./pages/QuantumSolver";
 import GraphGenerator from "./pages/GraphGenerator";
 import QuantumLibrary from "./pages/QuantumLibrary";
+import QuantumLab from "./pages/QuantumLab";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/quantum" element={<QuantumSolver />} />
             <Route path="/graph" element={<GraphGenerator />} />
             <Route path="/library" element={<QuantumLibrary />} />
+            <Route path="/lab" element={<QuantumLab />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
