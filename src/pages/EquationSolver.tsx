@@ -181,6 +181,11 @@ const EquationSolver = () => {
   const [derivResult, setDerivResult] = useState<DerivativeResult | null>(null);
   const [derivError, setDerivError] = useState<string | null>(null);
 
+  // System of linear equations
+  const [systemEqs, setSystemEqs] = useState<string[]>(["", ""]);
+  const [systemResult, setSystemResult] = useState<string | null>(null);
+  const [systemSteps, setSystemSteps] = useState<string[]>([]);
+
   // Custom equations
   const [customEquations, setCustomEquations] = useState<CustomEquation[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -359,6 +364,210 @@ const EquationSolver = () => {
     }
   };
 
+  // ── System of linear equations solver ──
+  const solveSystem = () => {
+    try {
+      const steps: string[] = [];
+      const eqs = systemEqs.map(e => e.trim()).filter(Boolean);
+      if (eqs.length < 2) {
+        setSystemResult("Add at least 2 equations.");
+        setSystemSteps([]);
+        return;
+      }
+
+      steps.push("━━━ Step 1: Parse Equations ━━━");
+      // Extract all variables
+      const allVarsSet = new Set<string>();
+      const parsed: { left: string; right: string }[] = [];
+      for (const eq of eqs) {
+        if (!eq.includes("=")) {
+          setSystemResult(`Error: "${eq}" must contain '='.`);
+          setSystemSteps([]);
+          return;
+        }
+        const [l, r] = eq.split("=").map(s => s.trim());
+        parsed.push({ left: l, right: r });
+        const vars = eq.match(/[a-zA-Z]/g);
+        (vars || []).filter(v => !["e", "E"].includes(v)).forEach(v => allVarsSet.add(v));
+      }
+      const vars = Array.from(allVarsSet).sort();
+      steps.push(`Equations: ${eqs.length}`);
+      eqs.forEach((eq, i) => steps.push(`  (${i + 1})  ${eq}`));
+      steps.push(`Variables found: ${vars.join(", ")}`);
+
+      if (vars.length === 0) {
+        setSystemResult("No variables found.");
+        setSystemSteps(steps);
+        return;
+      }
+
+      // Build coefficient matrix and constants vector
+      steps.push("");
+      steps.push("━━━ Step 2: Build Augmented Matrix [A|b] ━━━");
+      steps.push("Move everything to LHS: aᵢxᵢ + ... = constant");
+
+      const n = vars.length;
+      const m = eqs.length;
+      const A: number[][] = [];
+      const b: number[] = [];
+
+      for (let i = 0; i < m; i++) {
+        const { left, right } = parsed[i];
+        const expr = `${left} - (${right})`;
+        const node = math.simplify(math.parse(expr));
+        // Extract coefficients by evaluating at unit vectors
+        const row: number[] = [];
+        const base: Record<string, number> = {};
+        vars.forEach(v => (base[v] = 0));
+        const constant = -(node.evaluate({ ...base }) as number);
+        for (let j = 0; j < n; j++) {
+          const probe = { ...base };
+          probe[vars[j]] = 1;
+          const val = node.evaluate(probe) as number;
+          row.push(val + constant); // coefficient of vars[j]
+        }
+        A.push(row);
+        b.push(constant);
+      }
+
+      // Display augmented matrix
+      const header = `  [ ${vars.map(v => v.padStart(6)).join("  ")}  |  b ]`;
+      steps.push(header);
+      for (let i = 0; i < m; i++) {
+        const rowStr = A[i].map(v => v.toFixed(3).padStart(6)).join("  ");
+        steps.push(`  [ ${rowStr}  | ${b[i].toFixed(3).padStart(6)} ]`);
+      }
+
+      // Gaussian elimination with partial pivoting
+      steps.push("");
+      steps.push("━━━ Step 3: Gaussian Elimination ━━━");
+
+      const aug = A.map((row, i) => [...row, b[i]]);
+      const rows = aug.length;
+      const cols = n;
+
+      for (let col = 0; col < Math.min(rows, cols); col++) {
+        // Partial pivoting
+        let maxRow = col;
+        let maxVal = Math.abs(aug[col]?.[col] ?? 0);
+        for (let r = col + 1; r < rows; r++) {
+          if (Math.abs(aug[r][col]) > maxVal) {
+            maxVal = Math.abs(aug[r][col]);
+            maxRow = r;
+          }
+        }
+        if (maxRow !== col && col < rows) {
+          [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+          steps.push(`Swap R${col + 1} ↔ R${maxRow + 1} (pivot)`);
+        }
+
+        if (col >= rows || Math.abs(aug[col][col]) < 1e-12) continue;
+
+        // Scale pivot row
+        const pivot = aug[col][col];
+        if (Math.abs(pivot - 1) > 1e-12) {
+          for (let j = col; j <= cols; j++) aug[col][j] /= pivot;
+          steps.push(`R${col + 1} → R${col + 1} / ${pivot.toFixed(4)}`);
+        }
+
+        // Eliminate below and above (full Gauss-Jordan)
+        for (let r = 0; r < rows; r++) {
+          if (r === col) continue;
+          const factor = aug[r][col];
+          if (Math.abs(factor) < 1e-12) continue;
+          for (let j = col; j <= cols; j++) {
+            aug[r][j] -= factor * aug[col][j];
+          }
+          steps.push(`R${r + 1} → R${r + 1} − (${factor.toFixed(4)})·R${col + 1}`);
+        }
+      }
+
+      // Show reduced row echelon form
+      steps.push("");
+      steps.push("━━━ Step 4: Reduced Row Echelon Form ━━━");
+      for (let i = 0; i < rows; i++) {
+        const rowStr = aug[i].slice(0, cols).map(v => (Math.abs(v) < 1e-10 ? 0 : v).toFixed(3).padStart(6)).join("  ");
+        const bVal = Math.abs(aug[i][cols]) < 1e-10 ? 0 : aug[i][cols];
+        steps.push(`  [ ${rowStr}  | ${bVal.toFixed(3).padStart(6)} ]`);
+      }
+
+      // Extract solution
+      steps.push("");
+      steps.push("━━━ Step 5: Extract Solution ━━━");
+      const solution: Record<string, number> = {};
+      let inconsistent = false;
+      let underdetermined = false;
+
+      for (let i = 0; i < rows; i++) {
+        const allZero = aug[i].slice(0, cols).every(v => Math.abs(v) < 1e-10);
+        if (allZero && Math.abs(aug[i][cols]) > 1e-10) {
+          inconsistent = true;
+          break;
+        }
+      }
+
+      if (inconsistent) {
+        steps.push("❌ System is INCONSISTENT — no solution exists.");
+        setSystemResult("No solution — inconsistent system.");
+        setSystemSteps(steps);
+        return;
+      }
+
+      // Check rank
+      let rank = 0;
+      for (let i = 0; i < rows; i++) {
+        if (!aug[i].slice(0, cols).every(v => Math.abs(v) < 1e-10)) rank++;
+      }
+      if (rank < cols) underdetermined = true;
+
+      if (underdetermined) {
+        steps.push(`Rank = ${rank} < ${cols} variables → infinitely many solutions.`);
+        steps.push("Free variables exist. Showing a particular solution (free vars = 0):");
+      }
+
+      for (let i = 0; i < Math.min(rank, cols); i++) {
+        // Find pivot column
+        let pivotCol = -1;
+        for (let j = 0; j < cols; j++) {
+          if (Math.abs(aug[i][j] - 1) < 1e-10) {
+            pivotCol = j;
+            break;
+          }
+        }
+        if (pivotCol >= 0) {
+          const val = Math.abs(aug[i][cols]) < 1e-10 ? 0 : parseFloat(aug[i][cols].toFixed(6));
+          solution[vars[pivotCol]] = val;
+          steps.push(`${vars[pivotCol]} = ${val}`);
+        }
+      }
+
+      // Verification step
+      steps.push("");
+      steps.push("━━━ Step 6: Verification ━━━");
+      for (let i = 0; i < eqs.length; i++) {
+        const { left, right } = parsed[i];
+        try {
+          const scope: Record<string, number> = {};
+          vars.forEach(v => (scope[v] = solution[v] ?? 0));
+          const lVal = math.evaluate(left, scope) as number;
+          const rVal = math.evaluate(right, scope) as number;
+          const match = Math.abs(lVal - rVal) < 1e-6;
+          steps.push(`  (${i + 1}) ${left} = ${right}`);
+          steps.push(`       LHS = ${lVal.toFixed(6)}, RHS = ${rVal.toFixed(6)} → ${match ? "✓" : "✗"}`);
+        } catch {
+          steps.push(`  (${i + 1}) Could not verify.`);
+        }
+      }
+
+      const resultStr = vars.map(v => `${v} = ${solution[v] ?? "free"}`).join(",  ");
+      setSystemResult(resultStr);
+      setSystemSteps(steps);
+    } catch (err: any) {
+      setSystemResult(`Error: ${err.message}`);
+      setSystemSteps([]);
+    }
+  };
+
   const solveMatrix = (op: string) => {
     try {
       const nums = matrixValues.map(row => row.map(v => {
@@ -516,6 +725,123 @@ const EquationSolver = () => {
                   <LinearSolverGraph m={linearGraph.m} c={linearGraph.c} />
                 </div>
               )}
+            </GlassCard>
+
+            {/* System of Linear Equations */}
+            <GlassCard glow className="mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">System of Linear Equations</h2>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSystemEqs(prev => [...prev, ""])}
+                    className="gap-1 text-xs"
+                  >
+                    <Plus size={12} /> Add Equation
+                  </Button>
+                  <Button size="sm" onClick={solveSystem} className="gap-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
+                    <Play size={12} /> Solve System
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Enter multiple equations (e.g. <code className="text-primary/80">2*x + 3*y = 7</code>). Solved via Gaussian elimination with full step-by-step breakdown.
+              </p>
+
+              <div className="space-y-2 mb-4">
+                {systemEqs.map((eq, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <span className="text-xs text-muted-foreground font-mono w-6 text-right">({i + 1})</span>
+                    <Input
+                      placeholder={i === 0 ? "e.g. 2*x + 3*y = 7" : i === 1 ? "e.g. x - y = 1" : `Equation ${i + 1}`}
+                      value={eq}
+                      onChange={(e) => {
+                        const copy = [...systemEqs];
+                        copy[i] = e.target.value;
+                        setSystemEqs(copy);
+                      }}
+                      className="bg-secondary/50 border-border font-mono text-sm"
+                      onKeyDown={(e) => e.key === "Enter" && solveSystem()}
+                    />
+                    {systemEqs.length > 2 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => setSystemEqs(prev => prev.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick presets */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {[
+                  { label: "2×2 System", eqs: ["2*x + 3*y = 7", "x - y = 1"] },
+                  { label: "3×3 System", eqs: ["x + y + z = 6", "2*x - y + z = 3", "x + 2*y - z = 2"] },
+                  { label: "Physics: F = ma", eqs: ["3*a + 2*b = 12", "a - b = 1"] },
+                ].map(preset => (
+                  <Button
+                    key={preset.label}
+                    size="sm"
+                    variant="outline"
+                    className="text-[10px] h-7"
+                    onClick={() => { setSystemEqs(preset.eqs); setSystemResult(null); setSystemSteps([]); }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Results */}
+              <div className="glass-card !p-5">
+                {systemSteps.length > 0 ? (
+                  <div className="space-y-1">
+                    {systemSteps.map((step, i) => {
+                      const isHeader = step.includes("━━━");
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className={`text-xs font-mono ${
+                            isHeader
+                              ? "text-primary font-bold mt-3 mb-1"
+                              : step.includes("✓")
+                              ? "text-emerald-400"
+                              : step.includes("✗") || step.includes("❌")
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {step}
+                        </motion.div>
+                      );
+                    })}
+                    {systemResult && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: systemSteps.length * 0.03 }}
+                        className="mt-4 pt-4 border-t border-border/50 text-base font-mono font-bold text-primary"
+                      >
+                        {systemResult}
+                      </motion.div>
+                    )}
+                  </div>
+                ) : systemResult ? (
+                  <p className="text-sm text-muted-foreground">{systemResult}</p>
+                ) : (
+                  <p className="text-center text-muted-foreground text-sm">
+                    Add equations above and click Solve System for step-by-step Gaussian elimination.
+                  </p>
+                )}
+              </div>
             </GlassCard>
           </TabsContent>
 
