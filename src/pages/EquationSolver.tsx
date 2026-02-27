@@ -880,7 +880,8 @@ const EquationSolver = () => {
                 {[
                   { label: "2×2 System", eqs: ["2*x + 3*y = 7", "x - y = 1"] },
                   { label: "3×3 System", eqs: ["x + y + z = 6", "2*x - y + z = 3", "x + 2*y - z = 2"] },
-                  { label: "Physics: F = ma", eqs: ["3*a + 2*b = 12", "a - b = 1"] },
+                  { label: "4×4 System", eqs: ["a + b + c + d = 10", "2*a - b + c = 4", "a + 3*b - d = 5", "b + 2*c + d = 7"] },
+                  { label: "Dependent System", eqs: ["x + y = 3", "2*x + 2*y = 6"] },
                 ].map(preset => (
                   <Button
                     key={preset.label}
