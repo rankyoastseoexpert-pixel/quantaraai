@@ -2,7 +2,7 @@ import { memo } from "react";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, RotateCcw, Crosshair, Waves } from "lucide-react";
+import { Play, Pause, RotateCcw, Crosshair, Waves, Settings2, Atom, Box, Eye } from "lucide-react";
 import type { PotentialType, BoundaryCondition, InitialStateType } from "@/lib/quantumSimulator";
 
 interface Props {
@@ -69,26 +69,42 @@ const SliderRow = memo(({ label, value, min, max, step, onChange, unit }: {
 }) => (
   <div className="space-y-1">
     <div className="flex justify-between text-[10px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono text-primary">{value.toFixed(2)}{unit}</span>
+      <span className="text-muted-foreground font-medium">{label}</span>
+      <span className="font-mono text-primary bg-primary/10 px-1.5 rounded">{value.toFixed(2)}{unit}</span>
     </div>
     <Slider min={min} max={max} step={step} value={[value]} onValueChange={([v]) => onChange(v)} className="h-4" />
   </div>
 ));
 SliderRow.displayName = "SliderRow";
 
+const SectionHeader = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
+  <div className="flex items-center gap-2 mb-2.5">
+    <div className="w-5 h-5 rounded-md bg-primary/10 flex items-center justify-center">
+      <Icon size={11} className="text-primary" />
+    </div>
+    <h3 className="text-xs font-semibold text-foreground">{title}</h3>
+  </div>
+);
+
 const SimulationControls = (props: Props) => {
   return (
     <div className="space-y-3">
       {/* Playback */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Simulation</h3>
+        <SectionHeader icon={Play} title="Simulation" />
         <div className="flex gap-2 mb-3">
-          <Button size="sm" onClick={props.onTogglePlay} className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 flex-1">
+          <Button size="sm" onClick={props.onTogglePlay}
+            className={`gap-1.5 flex-1 text-[11px] font-semibold ${
+              props.playing
+                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
+                : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_hsl(var(--primary)/0.2)]"
+            }`}
+            variant={props.playing ? "outline" : "default"}
+          >
             {props.playing ? <Pause size={12} /> : <Play size={12} />}
             {props.playing ? "Pause" : "Evolve"}
           </Button>
-          <Button size="sm" variant="outline" onClick={props.onReset} className="border-border gap-1">
+          <Button size="sm" variant="outline" onClick={props.onReset} className="border-border gap-1 text-[11px]">
             <RotateCcw size={12} /> Reset
           </Button>
         </div>
@@ -104,7 +120,7 @@ const SimulationControls = (props: Props) => {
 
       {/* Potential */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Potential V(x)</h3>
+        <SectionHeader icon={Atom} title="Potential V(x)" />
         <div className="grid grid-cols-2 gap-1">
           {potentials.map(p => (
             <button
@@ -130,7 +146,7 @@ const SimulationControls = (props: Props) => {
 
       {/* Initial state type */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Initial State</h3>
+        <SectionHeader icon={Waves} title="Initial State" />
         <div className="grid grid-cols-2 gap-1 mb-3">
           {initialStates.map(s => (
             <button
@@ -147,7 +163,7 @@ const SimulationControls = (props: Props) => {
             </button>
           ))}
         </div>
-        <h3 className="text-xs font-semibold text-foreground mb-2">Wave Packet Parameters</h3>
+        <h4 className="text-[11px] font-semibold text-foreground mb-2 mt-3">Wave Packet</h4>
         <div className="space-y-2">
           <SliderRow label="x₀ (center)" value={props.x0} min={-8} max={8} step={0.1} onChange={props.setX0} />
           <SliderRow label="k₀ (momentum)" value={props.k0} min={-15} max={15} step={0.5} onChange={props.setK0} />
@@ -174,12 +190,12 @@ const SimulationControls = (props: Props) => {
 
       {/* Solver settings */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Solver Settings</h3>
+        <SectionHeader icon={Settings2} title="Solver Settings" />
         <div className="space-y-2">
           <SliderRow label="Δt" value={props.dt} min={0.001} max={0.05} step={0.001} onChange={props.setDt} />
           <SliderRow label="Grid points" value={props.gridSize} min={128} max={512} step={64} onChange={props.setGridSize} />
         </div>
-        <h3 className="text-xs font-semibold text-foreground mt-3 mb-2">Boundary Conditions</h3>
+        <h4 className="text-[11px] font-semibold text-foreground mt-3 mb-2">Boundary Conditions</h4>
         <div className="grid grid-cols-2 gap-1">
           {bcs.map(b => (
             <button
@@ -199,7 +215,7 @@ const SimulationControls = (props: Props) => {
 
       {/* View toggles */}
       <GlassCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground mb-2">Visualization</h3>
+        <SectionHeader icon={Eye} title="Visualization" />
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
             <input type="checkbox" checked={props.showPhase} onChange={e => props.setShowPhase(e.target.checked)}
