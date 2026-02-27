@@ -1,8 +1,9 @@
-import { memo, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { memo, useMemo, useRef, useState, useEffect } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import GlassCard from "@/components/GlassCard";
+import { Slider } from "@/components/ui/slider";
 import type { PlotPoint } from "@/lib/quantumSimulator";
 
 interface Props {
@@ -10,11 +11,27 @@ interface Props {
   historyBuffer: PlotPoint[][];
 }
 
+const CameraController = memo(({ polar, azimuthal }: { polar: number; azimuthal: number }) => {
+  const { camera } = useThree();
+  useEffect(() => {
+    const radius = 9;
+    const phi = (polar * Math.PI) / 180;
+    const theta = (azimuthal * Math.PI) / 180;
+    camera.position.set(
+      radius * Math.sin(phi) * Math.cos(theta),
+      radius * Math.cos(phi),
+      radius * Math.sin(phi) * Math.sin(theta)
+    );
+    camera.lookAt(0, 0, 0);
+  }, [polar, azimuthal, camera]);
+  return null;
+});
+CameraController.displayName = "CameraController";
+
 const Surface = memo(({ data, history }: { data: PlotPoint[]; history: PlotPoint[][] }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
-  // Build geometry from wavefunction history (x vs t surface)
-  const { geometry, colors } = useMemo(() => {
+  const { geometry } = useMemo(() => {
     const rows = Math.min(history.length, 60);
     const cols = Math.min(data.length, 100);
     const stepC = Math.max(1, Math.floor(data.length / cols));
@@ -37,7 +54,6 @@ const Surface = memo(({ data, history }: { data: PlotPoint[]; history: PlotPoint
         const yPos = p.prob * 5;
         positions.push(xPos, yPos, zPos);
 
-        // Phase → color
         const hue = ((p.phase + Math.PI) / (2 * Math.PI));
         const color = new THREE.Color();
         color.setHSL(hue, 0.8, 0.4 + p.prob * 2);
@@ -59,7 +75,7 @@ const Surface = memo(({ data, history }: { data: PlotPoint[]; history: PlotPoint
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    return { geometry: geo, colors: colorArr };
+    return { geometry: geo };
   }, [data, history]);
 
   useFrame(() => {
@@ -78,6 +94,9 @@ const Surface = memo(({ data, history }: { data: PlotPoint[]; history: PlotPoint
 Surface.displayName = "Surface";
 
 const Wavefunction3D = ({ data, historyBuffer }: Props) => {
+  const [polar, setPolar] = useState(35);
+  const [azimuthal, setAzimuthal] = useState(45);
+
   if (historyBuffer.length < 3) {
     return (
       <GlassCard className="p-4">
@@ -92,11 +111,28 @@ const Wavefunction3D = ({ data, historyBuffer }: Props) => {
   return (
     <GlassCard className="p-4">
       <h3 className="text-xs font-semibold text-foreground mb-2">3D |ψ(x,t)|² Surface</h3>
+      <div className="flex gap-4 mb-2">
+        <div className="flex-1 space-y-1">
+          <div className="flex justify-between text-[10px]">
+            <span className="text-muted-foreground">Polar angle</span>
+            <span className="font-mono text-primary">{polar}°</span>
+          </div>
+          <Slider min={5} max={175} step={1} value={[polar]} onValueChange={([v]) => setPolar(v)} className="h-4" />
+        </div>
+        <div className="flex-1 space-y-1">
+          <div className="flex justify-between text-[10px]">
+            <span className="text-muted-foreground">Azimuthal angle</span>
+            <span className="font-mono text-primary">{azimuthal}°</span>
+          </div>
+          <Slider min={0} max={360} step={1} value={[azimuthal]} onValueChange={([v]) => setAzimuthal(v)} className="h-4" />
+        </div>
+      </div>
       <div className="h-[300px] rounded-lg overflow-hidden border border-border/30">
         <Canvas camera={{ position: [6, 4, 6], fov: 45 }} gl={{ antialias: true }}>
           <ambientLight intensity={0.4} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
           <pointLight position={[-3, 3, -3]} intensity={0.3} color="#22d3ee" />
+          <CameraController polar={polar} azimuthal={azimuthal} />
           <Surface data={data} history={historyBuffer} />
           <OrbitControls enableDamping dampingFactor={0.05} />
           <gridHelper args={[10, 20, "#333", "#222"]} position={[0, -0.1, 0]} />
