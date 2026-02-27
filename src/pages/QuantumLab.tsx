@@ -7,7 +7,10 @@ import ExpectationPanel from "@/components/quantum-lab/ExpectationPanel";
 import TimeEvolutionGraph from "@/components/quantum-lab/TimeEvolutionGraph";
 import EnsemblePanel from "@/components/quantum-lab/EnsemblePanel";
 import { motion } from "framer-motion";
-import { Atom, FlaskConical, Sigma } from "lucide-react";
+import { Atom, FlaskConical, Sigma, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import * as XLSX from "xlsx";
+import { toast } from "@/hooks/use-toast";
 import {
   initSimulation,
   crankNicolsonStep,
@@ -169,6 +172,87 @@ const QuantumLab = () => {
 
   const education = useMemo(() => getEducationalContent(potential, bc), [potential, bc]);
 
+  const handleExportXLSX = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Wavefunction data
+    const wfData = plotData.map(p => ({
+      "x": p.x,
+      "Re(ψ)": p.psi_re,
+      "Im(ψ)": p.psi_im,
+      "|ψ|²": p.prob,
+      "Phase (rad)": p.phase,
+      "V(x)": p.potential,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(wfData), "Wavefunction");
+
+    // Sheet 2: Expectation values
+    if (ev) {
+      const evData = [
+        { Parameter: "⟨x⟩", Value: ev.x_mean, Unit: "" },
+        { Parameter: "⟨p⟩", Value: ev.p_mean, Unit: "ℏ/a₀" },
+        { Parameter: "⟨x²⟩", Value: ev.x2_mean, Unit: "" },
+        { Parameter: "⟨p²⟩", Value: ev.p2_mean, Unit: "" },
+        { Parameter: "Δx", Value: ev.delta_x, Unit: "" },
+        { Parameter: "Δp", Value: ev.delta_p, Unit: "" },
+        { Parameter: "ΔxΔp", Value: ev.heisenberg, Unit: "ℏ" },
+        { Parameter: "⟨E⟩", Value: ev.energy, Unit: "ℏω" },
+        { Parameter: "‖ψ‖²", Value: ev.norm, Unit: "" },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(evData), "Expectation Values");
+    }
+
+    // Sheet 3: Time evolution trajectory
+    if (trajectory.length > 0) {
+      const trajData = trajectory.map(t => ({
+        "t": t.t,
+        "⟨x⟩": t.x_mean,
+        "⟨p⟩": t.p_mean,
+        "Δx": t.delta_x,
+        "⟨E⟩": t.energy,
+        "‖ψ‖²": t.norm,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trajData), "Time Evolution");
+    }
+
+    // Sheet 4: Measurement history
+    if (measurements.length > 0) {
+      const measData = measurements.map(m => ({
+        "Time": m.time,
+        "Type": m.type,
+        "Value": m.position,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(measData), "Measurements");
+    }
+
+    // Sheet 5: Simulation parameters
+    const params = [
+      { Parameter: "Potential", Value: potential },
+      { Parameter: "Boundary Condition", Value: bc },
+      { Parameter: "V₀", Value: V0 },
+      { Parameter: "ω", Value: omega },
+      { Parameter: "Width", Value: width },
+      { Parameter: "Separation", Value: separation },
+      { Parameter: "x₀", Value: x0 },
+      { Parameter: "k₀", Value: k0 },
+      { Parameter: "σ", Value: sigma },
+      { Parameter: "Initial State", Value: initialState },
+      { Parameter: "Δt", Value: dt },
+      { Parameter: "Grid Points", Value: gridSize },
+      { Parameter: "Simulation Time", Value: simTime },
+      { Parameter: "Interference Mode", Value: interferenceEnabled ? "Enabled" : "Disabled" },
+      ...(interferenceEnabled ? [
+        { Parameter: "x₀' (2nd packet)", Value: x02 },
+        { Parameter: "k₀' (2nd packet)", Value: k02 },
+        { Parameter: "σ' (2nd packet)", Value: sigma2 },
+      ] : []),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(params), "Parameters");
+
+    XLSX.writeFile(wb, `quantum-lab-${potential}-t${simTime.toFixed(2)}.xlsx`);
+    toast({ title: "Exported", description: "Quantum Lab data saved as XLSX" });
+  }, [plotData, ev, trajectory, measurements, potential, bc, V0, omega, width, separation, x0, k0, sigma, initialState, dt, gridSize, simTime, interferenceEnabled, x02, k02, sigma2]);
+
   return (
     <PageLayout>
       <ScienceBackground />
@@ -180,18 +264,24 @@ const QuantumLab = () => {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-6"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.15)]">
-              <Atom size={20} className="text-primary" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.15)]">
+                <Atom size={20} className="text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Quantum <span className="text-gradient">Laboratory</span>
+                </h1>
+                <p className="text-muted-foreground text-xs">
+                  Real-time Schrödinger simulation · Crank-Nicolson solver · Measurement mechanics
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Quantum <span className="text-gradient">Laboratory</span>
-              </h1>
-              <p className="text-muted-foreground text-xs">
-                Real-time Schrödinger simulation · Crank-Nicolson solver · Measurement mechanics
-              </p>
-            </div>
+            <Button size="sm" variant="outline" onClick={handleExportXLSX}
+              className="gap-1.5 border-border text-xs hidden sm:flex">
+              <Download size={13} /> Export XLSX
+            </Button>
           </div>
           {/* Status pills */}
           <div className="flex gap-2 mt-3">
