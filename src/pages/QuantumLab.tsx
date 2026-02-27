@@ -6,6 +6,7 @@ import WavefunctionPlot from "@/components/quantum-lab/WavefunctionPlot";
 import ExpectationPanel from "@/components/quantum-lab/ExpectationPanel";
 import TimeEvolutionGraph from "@/components/quantum-lab/TimeEvolutionGraph";
 import EnsemblePanel from "@/components/quantum-lab/EnsemblePanel";
+import EnergySpectrumPanel from "@/components/quantum-lab/EnergySpectrumPanel";
 import { motion } from "framer-motion";
 import { Atom, FlaskConical, Sigma, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -383,6 +384,14 @@ const QuantumLab = () => {
               education={education}
               normHistory={trajectory.map(t => t.norm)}
               energyHistory={trajectory.map(t => t.energy)}
+            />
+
+            <EnergySpectrumPanel
+              potential={potential}
+              V0={V0}
+              omega={omega}
+              width={width}
+              currentEnergy={ev?.energy ?? null}
             />
 
             <EnsemblePanel
