@@ -252,65 +252,127 @@ const EquationSolver = () => {
 
       if (eq.includes("=")) {
         const [left, right] = eq.split("=").map(s => s.trim());
-        steps.push(`Given: ${left} = ${right}`);
+        steps.push(`━━━ Step 1: Identify the equation ━━━`);
+        steps.push(`Given equation: ${left} = ${right}`);
         
         const vars = eq.match(/[a-zA-Z]/g);
         const uniqueVars = [...new Set(vars || [])].filter(v => !["e", "E"].includes(v));
         
         if (uniqueVars.length === 1) {
           const variable = uniqueVars[0];
-          steps.push(`Solving for ${variable}...`);
-          steps.push(`Rearranging: ${left} - (${right}) = 0`);
+          
+          steps.push(`This is a single-variable equation in "${variable}".`);
+          
+          steps.push(``);
+          steps.push(`━━━ Step 2: Move all terms to one side ━━━`);
+          steps.push(`${left} − (${right}) = 0`);
           
           const expr = `${left} - (${right})`;
           const node = math.parse(expr);
           const simplified = math.simplify(node);
-          steps.push(`Simplified: ${simplified.toString()} = 0`);
+          const simplifiedStr = simplified.toString();
+          steps.push(`Simplify: ${simplifiedStr} = 0`);
           
+          steps.push(``);
+          steps.push(`━━━ Step 3: Solve for ${variable} ━━━`);
+          
+          // Check if it's linear: f(x) = ax + b
           const f = (val: number) => {
             const scope: Record<string, number> = {};
             scope[variable] = val;
             return simplified.evaluate(scope) as number;
           };
           
-          let x = 0;
-          for (let i = 0; i < 100; i++) {
-            const fx = f(x);
-            if (Math.abs(fx) < 1e-12) break;
-            const dfx = (f(x + 1e-8) - fx) / 1e-8;
-            if (Math.abs(dfx) < 1e-15) { x += 0.1; continue; }
-            x = x - fx / dfx;
-          }
+          const f0 = f(0);
+          const f1 = f(1);
+          const f2 = f(2);
+          const isLinear = Math.abs((f2 - f1) - (f1 - f0)) < 1e-8;
           
-          const rounded = Math.abs(x) < 1e-10 ? 0 : parseFloat(x.toFixed(8));
-          steps.push(`${variable} = ${rounded}`);
-          setLinearResult(`${variable} = ${rounded}`);
-
-          try {
-            const f0 = (() => { const s: Record<string, number> = {}; s[variable] = 0; return math.evaluate(right, s) as number; })();
-            const f1 = (() => { const s: Record<string, number> = {}; s[variable] = 1; return math.evaluate(right, s) as number; })();
-            const f2 = (() => { const s: Record<string, number> = {}; s[variable] = 2; return math.evaluate(right, s) as number; })();
-            const m1 = f1 - f0;
-            const m2 = f2 - f1;
-            if (Math.abs(m1 - m2) < 1e-8) {
-              steps.push(`Slope (m) = ${parseFloat(m1.toFixed(6))}`);
-              steps.push(`y-intercept (c) = ${parseFloat(f0.toFixed(6))}`);
-              steps.push(`To find c: set ${variable} = 0 → y = ${parseFloat(f0.toFixed(6))}`);
-              setLinearGraph({ m: parseFloat(m1.toFixed(6)), c: parseFloat(f0.toFixed(6)) });
+          if (isLinear) {
+            const a = f1 - f0; // coefficient of variable
+            const b = f0;      // constant term
+            steps.push(`Identify coefficients: ${a !== 0 ? `${a.toFixed(4)}·${variable}` : ""}${b >= 0 ? ` + ${b.toFixed(4)}` : ` − ${Math.abs(b).toFixed(4)}`} = 0`);
+            if (a !== 0) {
+              steps.push(`Move constant to RHS: ${a.toFixed(4)}·${variable} = ${(-b).toFixed(4)}`);
+              steps.push(`Divide both sides by ${a.toFixed(4)}:`);
+              const solution = -b / a;
+              const rounded = Math.abs(solution) < 1e-10 ? 0 : parseFloat(solution.toFixed(8));
+              steps.push(`${variable} = ${(-b).toFixed(4)} / ${a.toFixed(4)}`);
+              steps.push(`${variable} = ${rounded}`);
+              
+              steps.push(``);
+              steps.push(`━━━ Step 4: Verify the solution ━━━`);
+              steps.push(`Substitute ${variable} = ${rounded} back into original equation:`);
+              const scope: Record<string, number> = {};
+              scope[variable] = rounded;
+              const lhsVal = math.evaluate(left, scope) as number;
+              const rhsVal = math.evaluate(right, scope) as number;
+              steps.push(`LHS = ${left} = ${parseFloat(lhsVal.toFixed(6))}`);
+              steps.push(`RHS = ${right} = ${parseFloat(rhsVal.toFixed(6))}`);
+              steps.push(`LHS ${Math.abs(lhsVal - rhsVal) < 1e-6 ? "=" : "≠"} RHS ✓`);
+              
+              steps.push(``);
+              steps.push(`━━━ Step 5: Plot as y = mx + c ━━━`);
+              // Plot the RHS as a function if it contains the variable, else plot LHS
+              const plotExpr = right.match(/[a-zA-Z]/) ? right : left;
+              const p0 = (() => { const s: Record<string, number> = {}; s[variable] = 0; return math.evaluate(plotExpr, s) as number; })();
+              const p1 = (() => { const s: Record<string, number> = {}; s[variable] = 1; return math.evaluate(plotExpr, s) as number; })();
+              const slope = parseFloat((p1 - p0).toFixed(6));
+              const intercept = parseFloat(p0.toFixed(6));
+              steps.push(`Plotting: y = ${plotExpr}`);
+              steps.push(`Slope (m) = ${slope}`);
+              steps.push(`y-intercept (c) = ${intercept}`);
+              steps.push(`So: y = ${slope}·${variable} + ${intercept}`);
+              setLinearGraph({ m: slope, c: intercept });
+              
+              setLinearResult(`${variable} = ${rounded}`);
+            } else {
+              setLinearResult(Math.abs(b) < 1e-10 ? "✓ Identity — true for all values" : "✗ No solution — contradiction");
             }
-          } catch {}
+          } else {
+            // Non-linear — use Newton's method
+            steps.push(`This is a non-linear equation. Using iterative method:`);
+            let x = 0;
+            for (let i = 0; i < 100; i++) {
+              const fx = f(x);
+              if (Math.abs(fx) < 1e-12) break;
+              const dfx = (f(x + 1e-8) - fx) / 1e-8;
+              if (Math.abs(dfx) < 1e-15) { x += 0.1; continue; }
+              x = x - fx / dfx;
+            }
+            const rounded = Math.abs(x) < 1e-10 ? 0 : parseFloat(x.toFixed(8));
+            steps.push(`Newton-Raphson converges to: ${variable} = ${rounded}`);
+            
+            steps.push(``);
+            steps.push(`━━━ Step 4: Verify ━━━`);
+            const scope: Record<string, number> = {};
+            scope[variable] = rounded;
+            try {
+              const lhsVal = math.evaluate(left, scope) as number;
+              const rhsVal = math.evaluate(right, scope) as number;
+              steps.push(`LHS = ${parseFloat(lhsVal.toFixed(6))}, RHS = ${parseFloat(rhsVal.toFixed(6))} ${Math.abs(lhsVal - rhsVal) < 1e-4 ? "✓" : "≈"}`);
+            } catch {}
+            
+            setLinearResult(`${variable} = ${rounded}`);
+          }
         } else if (uniqueVars.length === 0) {
+          steps.push(`No variables — evaluating both sides numerically.`);
           const leftVal = math.evaluate(left);
           const rightVal = math.evaluate(right);
-          steps.push(`Left side = ${leftVal}`);
-          steps.push(`Right side = ${rightVal}`);
+          steps.push(``);
+          steps.push(`━━━ Step 2: Evaluate ━━━`);
+          steps.push(`LHS = ${left} = ${leftVal}`);
+          steps.push(`RHS = ${right} = ${rightVal}`);
           const equal = Math.abs(Number(leftVal) - Number(rightVal)) < 1e-10;
+          steps.push(equal ? `LHS = RHS ✓` : `LHS ≠ RHS ✗`);
           setLinearResult(equal ? "✓ Equation is TRUE" : "✗ Equation is FALSE");
         } else if (uniqueVars.length === 2) {
-          steps.push(`Variables: ${uniqueVars.join(", ")}`);
           const yVar = uniqueVars.find(v => v === "y") || uniqueVars[0];
           const xVar = uniqueVars.find(v => v !== yVar) || uniqueVars[1];
-          steps.push(`Treating ${yVar} as dependent, ${xVar} as independent`);
+          steps.push(`Two variables: ${xVar} (independent), ${yVar} (dependent).`);
+          
+          steps.push(``);
+          steps.push(`━━━ Step 2: Rearrange for ${yVar} ━━━`);
           
           try {
             const expr = `${left} - (${right})`;
@@ -330,12 +392,29 @@ const EquationSolver = () => {
             const y2 = evalAt(2);
             const m = y1 - y0;
             if (Math.abs((y2 - y1) - m) < 1e-8) {
-              steps.push(`${yVar} = ${m}${xVar}${y0 >= 0 ? " + " : " - "}${Math.abs(y0)}`);
-              steps.push(`Slope (m) = ${parseFloat(m.toFixed(6))}`);
-              steps.push(`${yVar}-intercept (c) = ${parseFloat(y0.toFixed(6))}`);
-              steps.push(`To find c: set ${xVar} = 0 → c = ${parseFloat(y0.toFixed(6))}`);
-              setLinearResult(`${yVar} = ${parseFloat(m.toFixed(6))}·${xVar} + ${parseFloat(y0.toFixed(6))}`);
-              setLinearGraph({ m: parseFloat(m.toFixed(6)), c: parseFloat(y0.toFixed(6)) });
+              const mR = parseFloat(m.toFixed(6));
+              const cR = parseFloat(y0.toFixed(6));
+              steps.push(`${yVar} = ${mR}·${xVar} ${cR >= 0 ? `+ ${cR}` : `− ${Math.abs(cR)}`}`);
+              
+              steps.push(``);
+              steps.push(`━━━ Step 3: Identify slope and intercept ━━━`);
+              steps.push(`Slope (m) = ${mR}`);
+              steps.push(`${yVar}-intercept (c) = ${cR}`);
+              steps.push(`When ${xVar} = 0: ${yVar} = ${cR}`);
+              steps.push(`When ${xVar} = 1: ${yVar} = ${parseFloat(y1.toFixed(6))}`);
+              steps.push(`When ${xVar} = 2: ${yVar} = ${parseFloat(y2.toFixed(6))}`);
+              
+              steps.push(``);
+              steps.push(`━━━ Step 4: Table of values ━━━`);
+              steps.push(`  ${xVar}  |  ${yVar}`);
+              steps.push(`─────┼──────`);
+              for (let xv = -2; xv <= 3; xv++) {
+                const yv = mR * xv + cR;
+                steps.push(`  ${xv.toString().padStart(2)}  |  ${yv.toFixed(2)}`);
+              }
+              
+              setLinearResult(`${yVar} = ${mR}·${xVar} + ${cR}`);
+              setLinearGraph({ m: mR, c: cR });
             } else {
               setLinearResult(`${simplified.toString()} = 0`);
             }
@@ -346,12 +425,14 @@ const EquationSolver = () => {
           }
         } else {
           steps.push(`Multiple variables: ${uniqueVars.join(", ")}`);
+          steps.push(`Use the System of Equations solver below for multi-variable systems.`);
           const expr = `${left} - (${right})`;
           const simplified = math.simplify(math.parse(expr));
           setLinearResult(`${simplified.toString()} = 0`);
         }
       } else {
-        steps.push(`Evaluating: ${eq}`);
+        steps.push(`━━━ Evaluate Expression ━━━`);
+        steps.push(`Expression: ${eq}`);
         const result = math.evaluate(eq);
         steps.push(`= ${result}`);
         setLinearResult(`Result: ${result}`);
@@ -692,22 +773,38 @@ const EquationSolver = () => {
 
               <div className="mt-6 glass-card !p-6">
                 {linearResult ? (
-                  <div className="space-y-2">
-                    {linearSteps.map((step, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.15 }}
-                        className="text-sm text-muted-foreground font-mono"
-                      >
-                        <span className="text-primary/50 mr-2">Step {i + 1}:</span> {step}
-                      </motion.div>
-                    ))}
+                  <div className="space-y-1">
+                    {linearSteps.map((step, i) => {
+                      const isHeader = step.includes("━━━");
+                      const isEmpty = step === "";
+                      const isCheck = step.includes("✓");
+                      const isTable = step.includes("─") || step.includes("|");
+                      return isEmpty ? (
+                        <div key={i} className="h-2" />
+                      ) : (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className={`text-xs font-mono ${
+                            isHeader
+                              ? "text-primary font-bold mt-2 mb-1 text-sm"
+                              : isCheck
+                              ? "text-emerald-400"
+                              : isTable
+                              ? "text-muted-foreground/70"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {step}
+                        </motion.div>
+                      );
+                    })}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: linearSteps.length * 0.15 }}
+                      transition={{ delay: linearSteps.length * 0.04 }}
                       className="mt-4 pt-4 border-t border-border/50 text-lg font-mono font-bold text-primary"
                     >
                       {linearResult}
