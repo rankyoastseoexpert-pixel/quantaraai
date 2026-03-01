@@ -1,8 +1,10 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useRef, lazy, Suspense } from "react";
+import { useRef, useState, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
 import quantaraLogo from "@/assets/quantara-logo.png";
+import demoVideo from "@/assets/quantara-demo.mp4";
+import demoThumbnail from "@/assets/demo-thumbnail.jpg";
 import FloatingEquations from "@/components/FloatingEquations";
 import HeroWaveAnimation from "@/components/HeroWaveAnimation";
 import ScienceBackground from "@/components/ScienceBackground";
@@ -591,9 +593,9 @@ const Index = () => {
         </section>
       </ParallaxSection>
 
-      {/* ═══════ VIDEO DEMO / ANIMATED WALKTHROUGH ═══════ */}
+      {/* ═══════ VIDEO DEMO ═══════ */}
       <ParallaxSection offset={20}>
-        <section className="relative py-24">
+        <section className="relative py-24" id="demo">
           <div className="container px-4">
             <motion.div
               className="text-center mb-14"
@@ -607,7 +609,7 @@ const Index = () => {
                 <span className="text-gradient">Quantum Solver</span> Works
               </h2>
               <p className="text-muted-foreground text-sm max-w-lg mx-auto">
-                See the full derivation engine in action — from equation input to verified solution.
+                See every feature in action — equation input, step-by-step derivations, interactive plots, and more.
               </p>
             </motion.div>
 
@@ -618,101 +620,57 @@ const Index = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
+              {/* Video Player */}
               <GlassCard glow className="p-0 overflow-hidden">
-                {/* Fake browser chrome */}
-                <div className="p-3 border-b border-border/30 flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
-                  <span className="ml-3 text-[10px] font-mono text-muted-foreground">quantaraai.lovable.app/quantum</span>
+                <div className="relative aspect-video bg-background/50">
+                  <video
+                    className="w-full h-full object-cover"
+                    poster={demoThumbnail}
+                    controls
+                    muted
+                    playsInline
+                    preload="metadata"
+                    loop
+                  >
+                    <source src={demoVideo} type="video/mp4" />
+                    Your browser does not support video playback.
+                  </video>
                 </div>
 
-                {/* Animated step-by-step walkthrough */}
-                <div className="p-6 sm:p-8 space-y-6">
-                  {/* Step 1: Input */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-2"
-                  >
-                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Step 1 — Enter Equation</div>
-                    <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 font-mono text-sm text-foreground">
-                      iℏ ∂ψ/∂t = Ĥψ
-                    </div>
-                  </motion.div>
-
-                  {/* Step 2: Rule application */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.5 }}
-                    className="space-y-2"
-                  >
-                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Step 2 — Apply Operator Expansion</div>
-                    <div className="space-y-1.5">
-                      {[
-                        { rule: "Operator Expansion", result: "Ĥ = T̂ + V̂ = p̂²/(2m) + V(x)" },
-                        { rule: "Momentum Substitution", result: "p̂ = -iℏ ∂/∂x → p̂² = -ℏ² ∂²/∂x²" },
-                        { rule: "Separation of Variables", result: "ψ(x,t) = φ(x)·T(t)" },
-                      ].map((s, i) => (
-                        <motion.div
-                          key={s.rule}
-                          initial={{ opacity: 0, y: 10 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: 0.7 + i * 0.2 }}
-                          className="flex items-start gap-2 text-xs"
-                        >
-                          <span className="shrink-0 mt-0.5 h-4 w-4 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold">{i + 1}</span>
-                          <div>
-                            <span className="text-primary/80 font-semibold">{s.rule}:</span>{" "}
-                            <span className="font-mono text-muted-foreground">{s.result}</span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-
-                  {/* Step 3: Final result */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 1.3 }}
-                    className="rounded-lg border border-primary/30 bg-primary/5 p-4"
-                  >
-                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-2">Final Result</div>
-                    <div className="font-mono text-sm text-foreground">
-                      ψ(x,t) = Σₙ cₙ φₙ(x) e<sup>-iEₙt/ℏ</sup>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-2">
-                      where Ĥφₙ = Eₙφₙ — energy eigenvalue equation
-                    </div>
-                  </motion.div>
-
-                  {/* Animated wave */}
-                  <svg className="w-full h-20" viewBox="0 0 600 60">
-                    <defs>
-                      <linearGradient id="demoWaveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.7" />
-                        <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path stroke="url(#demoWaveGrad)" strokeWidth="2" fill="none">
-                      <animate
-                        attributeName="d"
-                        dur="3s"
-                        repeatCount="indefinite"
-                        values="M0,30 C75,10 150,50 225,30 C300,10 375,50 450,30 C525,10 600,30 600,30;M0,30 C75,50 150,10 225,30 C300,50 375,10 450,30 C525,50 600,30 600,30;M0,30 C75,10 150,50 225,30 C300,10 375,50 450,30 C525,10 600,30 600,30"
-                      />
-                    </path>
-                  </svg>
+                {/* Video caption bar */}
+                <div className="px-5 py-3 border-t border-border/30 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
+                    <span className="flex items-center gap-1.5"><Atom size={11} className="text-primary" /> Quantum Solver</span>
+                    <span className="flex items-center gap-1.5"><Activity size={11} className="text-primary" /> Step-by-Step</span>
+                    <span className="flex items-center gap-1.5"><BarChart3 size={11} className="text-primary" /> Interactive Plots</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/50">Full platform walkthrough</span>
                 </div>
               </GlassCard>
+
+              {/* Feature highlights under video */}
+              <motion.div
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+              >
+                {[
+                  { icon: "ψ", label: "Equation Input", desc: "LaTeX editor with symbol palette" },
+                  { icon: "∂", label: "Rule Application", desc: "Power, Product & Chain rules" },
+                  { icon: "∫", label: "Operator Handling", desc: "Ĥ, p̂, ∇² expansion" },
+                  { icon: "✓", label: "Verified Results", desc: "Numerical validation included" },
+                ].map((item) => (
+                  <motion.div key={item.label} variants={staggerItem}>
+                    <GlassCard className="text-center py-4">
+                      <div className="text-xl font-mono text-primary mb-1">{item.icon}</div>
+                      <div className="text-xs font-semibold text-foreground">{item.label}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">{item.desc}</div>
+                    </GlassCard>
+                  </motion.div>
+                ))}
+              </motion.div>
 
               {/* CTA under demo */}
               <motion.div
@@ -737,6 +695,7 @@ const Index = () => {
             {/* Transcript for SEO */}
             <div className="sr-only">
               <h3>Step-by-step quantum equation solving process</h3>
+              <p>This demo video showcases all sections of the Quantara AI platform including: equation input with LaTeX editor, step-by-step derivation engine applying Power Rule, Product Rule, Chain Rule, and operator handling for quantum equations like the Schrödinger equation. Interactive wavefunction plots, 3D molecular models, periodic table explorer, Gaussian elimination for systems of equations, and export capabilities are all demonstrated.</p>
               <p>1. Enter a quantum equation like the Time-Dependent Schrödinger Equation: iℏ ∂ψ/∂t = Ĥψ</p>
               <p>2. The solver applies operator expansion, substituting Ĥ = T̂ + V̂ and p̂ = -iℏ ∂/∂x</p>
               <p>3. Using the Power Rule, Product Rule, and Chain Rule for operator handling</p>
