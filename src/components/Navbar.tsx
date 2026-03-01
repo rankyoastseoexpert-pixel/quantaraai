@@ -12,6 +12,7 @@ const navItems = [
   { label: "Quantum Solver", path: "/quantum" },
   { label: "Graph Generator", path: "/graph" },
   { label: "Quantum Lab", path: "/lab" },
+  { label: "Solid-State", path: "/solid-state" },
   { label: "Library", path: "/library" },
 ];
 
