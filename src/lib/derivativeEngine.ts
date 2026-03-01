@@ -1,8 +1,10 @@
 /**
  * Symbolic Derivative Engine
  * Solves derivatives using direct differentiation rules only.
+ * Supports ANY variable (x, t, r, θ, etc.) — auto-detected or specified.
  * NO integrals, NO ODE solving.
  */
+import { extractVariables } from "@/lib/variableDetector";
 
 export interface DerivativeStep {
   rule: string;
@@ -13,6 +15,7 @@ export interface DerivativeStep {
 
 export interface DerivativeResult {
   input: string;
+  variable: string;
   steps: DerivativeStep[];
   finalAnswer: string;
   rulesUsed: string[];
@@ -46,9 +49,14 @@ function isNumber(s: Expr): boolean {
   return !isNaN(Number(s)) && s !== "";
 }
 
-/** Detect if expression is purely a constant w.r.t. x */
+// Current differentiation variable (set per solve call)
+let diffVar = "x";
+
+/** Detect if expression is purely a constant w.r.t. the current variable */
 function isConstant(s: Expr): boolean {
-  return !s.includes("x");
+  // Check if the expression contains the differentiation variable as a standalone token
+  const regex = new RegExp(`(?<![a-zA-Z])${diffVar}(?![a-zA-Z])`);
+  return !regex.test(s);
 }
 
 /** Very lightweight parenthesis-balanced split */
@@ -135,10 +143,11 @@ function simplifyCoeff(expr: string): string {
   expr = expr.replace(/0\s*\*\s*[^\s+\-]*/g, "0");
   // n * 0 => 0
   expr = expr.replace(/[^\s+\-]*\s*\*\s*0/g, "0");
-  // x^1 => x
-  expr = expr.replace(/x\^1\b/g, "x");
+  // var^1 => var
+  const v = diffVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  expr = expr.replace(new RegExp(`${v}\\^1\\b`, 'g'), diffVar);
   // 1x => x
-  expr = expr.replace(/\b1x\b/g, "x");
+  expr = expr.replace(new RegExp(`\\b1${v}\\b`, 'g'), diffVar);
   return expr.trim();
 }
 
@@ -157,13 +166,13 @@ function diff(expr: Expr, steps: DerivativeStep[]): Expr {
     return "0";
   }
 
-  // Just "x"
-  if (expr === "x") {
+  // Just the variable
+  if (expr === diffVar) {
     steps.push({
       rule: "Power Rule",
-      expression: "x",
+      expression: diffVar,
       result: "1",
-      explanation: "d/dx(x) = 1 — power rule with n=1",
+      explanation: `d/d${diffVar}(${diffVar}) = 1 — power rule with n=1`,
     });
     return "1";
   }
@@ -258,14 +267,14 @@ function diff(expr: Expr, steps: DerivativeStep[]): Expr {
 
       // e^u — exponential (e is special)
       if (base === "e") {
-        if (exp === "x") {
+        if (exp === diffVar) {
           steps.push({
             rule: "Exponential Rule",
             expression: expr,
-            result: "e^x",
-            explanation: "d/dx(eˣ) = eˣ — the exponential is its own derivative",
+            result: `e^${diffVar}`,
+            explanation: `d/d${diffVar}(e^${diffVar}) = e^${diffVar} — the exponential is its own derivative`,
           });
-          return "e^x";
+          return `e^${diffVar}`;
         }
         // Chain rule: d/dx e^u = e^u · u'
         steps.push({
@@ -279,29 +288,29 @@ function diff(expr: Expr, steps: DerivativeStep[]): Expr {
         return simplifyCoeff(`e^(${exp}) · ${du}`);
       }
 
-      // a^x general exponential
-      if (isConstant(base) && exp === "x") {
+      // a^var general exponential
+      if (isConstant(base) && exp === diffVar) {
         steps.push({
           rule: "Exponential Rule",
           expression: expr,
-          result: `${base}^x · ln(${base})`,
-          explanation: `d/dx(aˣ) = aˣ·ln(a) — general exponential rule`,
+          result: `${base}^${diffVar} · ln(${base})`,
+          explanation: `d/d${diffVar}(a^${diffVar}) = a^${diffVar}·ln(a) — general exponential rule`,
         });
-        return `${base}^x · ln(${base})`;
+        return `${base}^${diffVar} · ln(${base})`;
       }
 
       // x^n or u^n — power rule or chain rule
       if (isNumber(exp)) {
         const n = parseFloat(exp);
         const newExp = n - 1;
-        if (base === "x") {
+        if (base === diffVar) {
           steps.push({
             rule: "Power Rule",
             expression: expr,
-            result: `${n}·x^${newExp}`,
-            explanation: `d/dx(xⁿ) = n·xⁿ⁻¹ → d/dx(x^${n}) = ${n}·x^${newExp}`,
+            result: `${n}·${diffVar}^${newExp}`,
+            explanation: `d/d${diffVar}(${diffVar}ⁿ) = n·${diffVar}ⁿ⁻¹ → d/d${diffVar}(${diffVar}^${n}) = ${n}·${diffVar}^${newExp}`,
           });
-          const result = newExp === 0 ? `${n}` : newExp === 1 ? `${n}x` : `${n}x^${newExp}`;
+          const result = newExp === 0 ? `${n}` : newExp === 1 ? `${n}${diffVar}` : `${n}${diffVar}^${newExp}`;
           return simplifyCoeff(result);
         }
         // u^n: chain rule
@@ -416,13 +425,29 @@ function diff(expr: Expr, steps: DerivativeStep[]): Expr {
   return `d/dx(${expr})`;
 }
 
-/** Public API */
-export function solveDerivative(rawInput: string): DerivativeResult {
+/** Public API — auto-detects variable or accepts explicit variable */
+export function solveDerivative(rawInput: string, variable?: string): DerivativeResult {
   // Normalize input: strip d/dx(...) or dy/dx wrappers
   let expr = rawInput.trim();
-  expr = expr.replace(/^d\/dx\s*\(?(.*?)\)?$/i, "$1").trim();
-  expr = expr.replace(/^dy\/dx\s*\(?(.*?)\)?$/i, "$1").trim();
+  
+  // Try to detect variable from d/d<var> notation
+  const dNotation = expr.match(/^d\/d([a-zA-Zα-ω])\s*\(?(.*?)\)?$/i);
+  if (dNotation) {
+    variable = variable || dNotation[1];
+    expr = dNotation[2].trim();
+  } else {
+    expr = expr.replace(/^dy\/dx\s*\(?(.*?)\)?$/i, "$1").trim();
+  }
   expr = expr.replace(/\s+/g, "");
+
+  // Auto-detect variable if not specified
+  if (!variable) {
+    const vars = extractVariables(expr);
+    variable = vars.length > 0 ? vars[0] : "x";
+  }
+  
+  // Set the global diff variable for this solve call
+  diffVar = variable;
 
   const steps: DerivativeStep[] = [];
   const finalAnswer = diff(expr, steps);
@@ -431,6 +456,7 @@ export function solveDerivative(rawInput: string): DerivativeResult {
 
   return {
     input: rawInput.trim(),
+    variable,
     steps,
     finalAnswer: simplifyCoeff(finalAnswer),
     rulesUsed,
