@@ -3,6 +3,7 @@ import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import ScienceBackground from "@/components/ScienceBackground";
 import QuantumDerivationView from "@/components/QuantumDerivationView";
+import LaTeXEquationEditor from "@/components/LaTeXEquationEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -29,24 +30,7 @@ const quantumPresets = [
 ];
 
 // Expanded symbol palette — full operator support
-const symbolGroups = [
-  {
-    label: "Math",
-    symbols: ["+", "−", "×", "÷", "^", "=", "≈", "≠", "≤", "≥", "±"],
-  },
-  {
-    label: "Calculus",
-    symbols: ["∂", "d/dx", "∇", "∇²", "∫", "Σ", "lim", "∞", "→"],
-  },
-  {
-    label: "Quantum",
-    symbols: ["ℏ", "ψ", "ω", "Ĥ", "p̂", "x̂", "L̂", "Ŝ", "Â", "⟨", "⟩", "|", "†", "⊗"],
-  },
-  {
-    label: "Greek",
-    symbols: ["α", "β", "γ", "δ", "ε", "θ", "λ", "μ", "π", "σ", "φ", "χ"],
-  },
-];
+// Symbol groups now handled by LaTeXEquationEditor component
 
 // Equation presets for the solver — maps to derivation database keys
 const equationPresets = [
@@ -252,32 +236,11 @@ const QuantumSolver = () => {
           <div className="lg:col-span-2 space-y-4">
             <GlassCard>
               <h2 className="text-sm font-semibold text-foreground mb-3">Quantum Equation Editor</h2>
-              <textarea
+              <LaTeXEquationEditor
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Enter quantum equation (e.g. iℏ ∂ψ/∂t = Ĥψ, Ĥψ = Eψ, ½mω²x², L̂ = r̂ × p̂)..."
-                className="w-full h-32 bg-secondary/50 border border-border rounded-lg p-3 font-mono text-sm text-foreground resize-none focus:outline-none focus:border-primary/50"
+                onChange={setInput}
+                placeholder="Enter quantum equation (e.g. iℏ ∂ψ/∂t = Ĥψ, Ĥψ = Eψ, ½mω²x²)..."
               />
-
-              {/* Symbol palette — grouped */}
-              <div className="mt-3 space-y-2">
-                {symbolGroups.map(group => (
-                  <div key={group.label}>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{group.label}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {group.symbols.map(s => (
-                        <button
-                          key={s}
-                          onClick={() => setInput(prev => prev + s)}
-                          className="h-7 min-w-[28px] px-1.5 rounded-md bg-secondary/70 border border-border text-primary font-mono text-xs hover:bg-primary/15 hover:border-primary/30 transition-colors"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               <div className="flex gap-2 mt-4">
                 <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSolve}>

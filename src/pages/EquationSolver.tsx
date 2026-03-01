@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LaTeXEquationEditor from "@/components/LaTeXEquationEditor";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import ScienceBackground from "@/components/ScienceBackground";
 import AnimatedSteps from "@/components/AnimatedSteps";
 import DerivativeStepsView from "@/components/DerivativeStepsView";
 import { solveDerivative, derivativePresets, type DerivativeResult } from "@/lib/derivativeEngine";
+import { extractVariables, extractVariablesFromSystem, describeSystem } from "@/lib/variableDetector";
 
 const diffPresets = [
   { name: "First-order ODE", eq: "y' + P(x)y = Q(x)", key: "First-order ODE" },
@@ -255,8 +257,7 @@ const EquationSolver = () => {
         steps.push(`━━━ Step 1: Identify the equation ━━━`);
         steps.push(`Given equation: ${left} = ${right}`);
         
-        const vars = eq.match(/[a-zA-Z]/g);
-        const uniqueVars = [...new Set(vars || [])].filter(v => !["e", "E"].includes(v));
+        const uniqueVars = extractVariables(eq);
         
         if (uniqueVars.length === 1) {
           const variable = uniqueVars[0];
@@ -458,7 +459,6 @@ const EquationSolver = () => {
 
       steps.push("━━━ Step 1: Parse Equations ━━━");
       // Extract all variables
-      const allVarsSet = new Set<string>();
       const parsed: { left: string; right: string }[] = [];
       for (const eq of eqs) {
         if (!eq.includes("=")) {
@@ -468,13 +468,12 @@ const EquationSolver = () => {
         }
         const [l, r] = eq.split("=").map(s => s.trim());
         parsed.push({ left: l, right: r });
-        const vars = eq.match(/[a-zA-Z]/g);
-        (vars || []).filter(v => !["e", "E"].includes(v)).forEach(v => allVarsSet.add(v));
       }
-      const vars = Array.from(allVarsSet).sort();
+      const vars = extractVariablesFromSystem(eqs);
+      const systemDesc = describeSystem(eqs.length, vars);
       steps.push(`Equations: ${eqs.length}`);
       eqs.forEach((eq, i) => steps.push(`  (${i + 1})  ${eq}`));
-      steps.push(`Variables found: ${vars.join(", ")}`);
+      steps.push(systemDesc);
 
       if (vars.length === 0) {
         setSystemResult("No variables found.");
@@ -981,44 +980,31 @@ const EquationSolver = () => {
                 </div>
               </div>
 
-              {/* Input */}
+              {/* Input with LaTeX Editor */}
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Expression <span className="text-primary font-mono">f(x)</span> — the solver computes d/dx(f(x))
+                    Expression <span className="text-primary font-mono">f(x)</span> — the solver computes d/dx(f(x)). Supports any variable (x, t, r, θ, etc.)
                   </label>
-                  <div className="flex gap-3">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono select-none">d/dx</span>
-                      <Input
-                        value={derivInput}
-                        onChange={(e) => { setDerivInput(e.target.value); setDerivResult(null); setDerivError(null); }}
-                        onKeyDown={(e) => e.key === "Enter" && handleSolveDerivative()}
-                        placeholder="e.g. x^3 + sin(x)  or  e^(x^2)"
-                        className="bg-secondary/50 border-border font-mono pl-12"
-                      />
-                    </div>
+                  <LaTeXEquationEditor
+                    value={derivInput}
+                    onChange={(val) => { setDerivInput(val); setDerivResult(null); setDerivError(null); }}
+                    placeholder="e.g. x^3 + sin(x)  or  t^2 * e^(t)"
+                  />
+                  <div className="flex gap-2 mt-3">
                     <Button onClick={handleSolveDerivative} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
                       <Play size={14} /> Differentiate
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 border-border text-muted-foreground"
+                      onClick={() => { setDerivInput(""); setDerivResult(null); setDerivError(null); }}
+                    >
+                      <RotateCcw size={13} /> Clear
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
-                  {["sin(x)", "cos(x)", "tan(x)", "e^x", "ln(x)", "x^n"].map(hint => (
-                    <span key={hint} className="font-mono bg-secondary/50 px-2 py-0.5 rounded text-[11px]">{hint}</span>
-                  ))}
-                  <span className="text-muted-foreground/60">— accepted syntax</span>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-border text-muted-foreground"
-                  onClick={() => { setDerivInput(""); setDerivResult(null); setDerivError(null); }}
-                >
-                  <RotateCcw size={13} /> Clear
-                </Button>
               </div>
 
               {/* Error */}
