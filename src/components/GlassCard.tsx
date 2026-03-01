@@ -2,16 +2,17 @@ import { cn } from "@/lib/utils";
 import { ReactNode, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
-interface GlassCardProps {
+export interface GlassCardProps {
   children: ReactNode;
   className?: string;
   hover?: boolean;
   glow?: boolean;
   tilt?: boolean;
   onClick?: () => void;
+  id?: string;
 }
 
-const GlassCard = ({ children, className, hover = false, glow = false, tilt = false, onClick }: GlassCardProps) => {
+const GlassCard = ({ children, className, hover = false, glow = false, tilt = false, onClick, id }: GlassCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [tiltStyle, setTiltStyle] = useState({ rotateX: 0, rotateY: 0 });
   const [glowPos, setGlowPos] = useState({ x: 50, y: 50 });
@@ -38,6 +39,7 @@ const GlassCard = ({ children, className, hover = false, glow = false, tilt = fa
     return (
       <motion.div
         ref={cardRef}
+        id={id}
         onClick={onClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -64,6 +66,7 @@ const GlassCard = ({ children, className, hover = false, glow = false, tilt = fa
 
   return (
     <div
+      id={id}
       onClick={onClick}
       className={cn(
         "glass-card",
