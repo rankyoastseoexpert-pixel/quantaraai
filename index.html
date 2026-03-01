@@ -32,6 +32,30 @@
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
     }
     </script>
+    <!-- FAQ Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does this solver support variables other than x and y?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes! Quantara AI supports any symbolic variable including a, b, t, z, r, and Greek letters like α, β, θ. The solver auto-detects variables from your equation." }
+        },
+        {
+          "@type": "Question",
+          "name": "How to solve equations with different variables?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Simply enter your equation with any variable names. The solver dynamically detects unknowns and provides step-by-step solutions using Gaussian elimination, substitution, or symbolic differentiation." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this quantum equation solver free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes, Quantara AI is 100% free. All features including step-by-step derivations, LaTeX editor, quantum simulations, and export tools are available at no cost." }
+        }
+      ]
+    }
+    </script>
   </head>
 
   <body>

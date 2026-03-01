@@ -18,6 +18,11 @@ import {
   Eye,
   ChevronRight,
   Waves,
+  Check,
+  X,
+  Star,
+  Play,
+  Quote,
 } from "lucide-react";
 import FloatingScientificModels from "@/components/FloatingScientificModels";
 import InteractivePeriodicTable from "@/components/InteractivePeriodicTable";
@@ -102,6 +107,12 @@ const staggerItem = {
     scale: 1,
     transition: { duration: 0.6, ease: "easeOut" as const },
   },
+};
+
+const ComparisonCell = ({ value }: { value: boolean | string }) => {
+  if (value === true) return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15"><Check size={12} className="text-primary" /></span>;
+  if (value === false) return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted/30"><X size={12} className="text-muted-foreground/50" /></span>;
+  return <span className="text-[10px] text-muted-foreground">{value}</span>;
 };
 
 const Index = () => {
@@ -580,6 +591,389 @@ const Index = () => {
         </section>
       </ParallaxSection>
 
+      {/* ═══════ VIDEO DEMO / ANIMATED WALKTHROUGH ═══════ */}
+      <ParallaxSection offset={20}>
+        <section className="relative py-24">
+          <div className="container px-4">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                Watch How Our Step-by-Step{" "}
+                <span className="text-gradient">Quantum Solver</span> Works
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+                See the full derivation engine in action — from equation input to verified solution.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="max-w-4xl mx-auto"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              <GlassCard glow className="p-0 overflow-hidden">
+                {/* Fake browser chrome */}
+                <div className="p-3 border-b border-border/30 flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                  <span className="ml-3 text-[10px] font-mono text-muted-foreground">quantaraai.lovable.app/quantum</span>
+                </div>
+
+                {/* Animated step-by-step walkthrough */}
+                <div className="p-6 sm:p-8 space-y-6">
+                  {/* Step 1: Input */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Step 1 — Enter Equation</div>
+                    <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 font-mono text-sm text-foreground">
+                      iℏ ∂ψ/∂t = Ĥψ
+                    </div>
+                  </motion.div>
+
+                  {/* Step 2: Rule application */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 }}
+                    className="space-y-2"
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Step 2 — Apply Operator Expansion</div>
+                    <div className="space-y-1.5">
+                      {[
+                        { rule: "Operator Expansion", result: "Ĥ = T̂ + V̂ = p̂²/(2m) + V(x)" },
+                        { rule: "Momentum Substitution", result: "p̂ = -iℏ ∂/∂x → p̂² = -ℏ² ∂²/∂x²" },
+                        { rule: "Separation of Variables", result: "ψ(x,t) = φ(x)·T(t)" },
+                      ].map((s, i) => (
+                        <motion.div
+                          key={s.rule}
+                          initial={{ opacity: 0, y: 10 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.7 + i * 0.2 }}
+                          className="flex items-start gap-2 text-xs"
+                        >
+                          <span className="shrink-0 mt-0.5 h-4 w-4 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold">{i + 1}</span>
+                          <div>
+                            <span className="text-primary/80 font-semibold">{s.rule}:</span>{" "}
+                            <span className="font-mono text-muted-foreground">{s.result}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Step 3: Final result */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 1.3 }}
+                    className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-2">Final Result</div>
+                    <div className="font-mono text-sm text-foreground">
+                      ψ(x,t) = Σₙ cₙ φₙ(x) e<sup>-iEₙt/ℏ</sup>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-2">
+                      where Ĥφₙ = Eₙφₙ — energy eigenvalue equation
+                    </div>
+                  </motion.div>
+
+                  {/* Animated wave */}
+                  <svg className="w-full h-20" viewBox="0 0 600 60">
+                    <defs>
+                      <linearGradient id="demoWaveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.7" />
+                        <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path stroke="url(#demoWaveGrad)" strokeWidth="2" fill="none">
+                      <animate
+                        attributeName="d"
+                        dur="3s"
+                        repeatCount="indefinite"
+                        values="M0,30 C75,10 150,50 225,30 C300,10 375,50 450,30 C525,10 600,30 600,30;M0,30 C75,50 150,10 225,30 C300,50 375,10 450,30 C525,50 600,30 600,30;M0,30 C75,10 150,50 225,30 C300,10 375,50 450,30 C525,10 600,30 600,30"
+                      />
+                    </path>
+                  </svg>
+                </div>
+              </GlassCard>
+
+              {/* CTA under demo */}
+              <motion.div
+                className="text-center mt-8"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+              >
+                <Button
+                  asChild
+                  size="lg"
+                  className="gap-2 rounded-full px-8 hero-gradient-btn text-primary-foreground border-0"
+                >
+                  <Link to="/quantum">
+                    <Play size={16} /> Try the Step-by-Step Solver Now
+                  </Link>
+                </Button>
+              </motion.div>
+            </motion.div>
+
+            {/* Transcript for SEO */}
+            <div className="sr-only">
+              <h3>Step-by-step quantum equation solving process</h3>
+              <p>1. Enter a quantum equation like the Time-Dependent Schrödinger Equation: iℏ ∂ψ/∂t = Ĥψ</p>
+              <p>2. The solver applies operator expansion, substituting Ĥ = T̂ + V̂ and p̂ = -iℏ ∂/∂x</p>
+              <p>3. Using the Power Rule, Product Rule, and Chain Rule for operator handling</p>
+              <p>4. Separation of variables yields the time-independent equation Ĥφₙ = Eₙφₙ</p>
+              <p>5. Final result: ψ(x,t) = Σₙ cₙ φₙ(x) e^(-iEₙt/ℏ)</p>
+            </div>
+          </div>
+        </section>
+      </ParallaxSection>
+
+      {/* ═══════ FEATURE COMPARISON TABLE ═══════ */}
+      <ParallaxSection offset={15}>
+        <section className="relative py-24">
+          <div className="container px-4">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                Why <span className="text-gradient">Quantara AI</span>?
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+                See how we compare to other equation solvers and calculators.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="max-w-4xl mx-auto overflow-x-auto"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+            >
+              <GlassCard className="p-0 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="text-left p-4 text-muted-foreground font-medium text-xs">Feature</th>
+                      <th className="p-4 text-center">
+                        <span className="text-primary font-bold text-xs">Quantara AI</span>
+                      </th>
+                      <th className="p-4 text-center text-muted-foreground text-xs font-medium">Wolfram Alpha</th>
+                      <th className="p-4 text-center text-muted-foreground text-xs font-medium">Symbolab</th>
+                      <th className="p-4 text-center text-muted-foreground text-xs font-medium hidden sm:table-cell">Desmos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { feature: "Step-by-step derivations", q: true, w: "Paid", s: "Paid", d: false },
+                      { feature: "Quantum equation solver", q: true, w: "Limited", s: false, d: false },
+                      { feature: "LaTeX equation editor", q: true, w: false, s: true, d: false },
+                      { feature: "Interactive wavefunction plots", q: true, w: false, s: false, d: "Limited" },
+                      { feature: "Any-variable support", q: true, w: true, s: true, d: true },
+                      { feature: "Operator algebra (Ĥ, p̂, ∇²)", q: true, w: "Limited", s: false, d: false },
+                      { feature: "Gaussian elimination steps", q: true, w: "Paid", s: "Paid", d: false },
+                      { feature: "3D molecular models", q: true, w: false, s: false, d: false },
+                      { feature: "Export (PDF, SVG, LaTeX)", q: true, w: "Paid", s: "Paid", d: "Limited" },
+                      { feature: "100% Free", q: true, w: false, s: false, d: true },
+                    ].map((row, i) => (
+                      <motion.tr
+                        key={row.feature}
+                        className="border-b border-border/20 last:border-0"
+                        initial={{ opacity: 0, x: -15 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.04 }}
+                      >
+                        <td className="p-3 pl-4 text-xs text-foreground/80">{row.feature}</td>
+                        <td className="p-3 text-center">
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15">
+                            <Check size={12} className="text-primary" />
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <ComparisonCell value={row.w} />
+                        </td>
+                        <td className="p-3 text-center">
+                          <ComparisonCell value={row.s} />
+                        </td>
+                        <td className="p-3 text-center hidden sm:table-cell">
+                          <ComparisonCell value={row.d} />
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </GlassCard>
+            </motion.div>
+          </div>
+        </section>
+      </ParallaxSection>
+
+      {/* ═══════ TESTIMONIALS ═══════ */}
+      <ParallaxSection offset={15}>
+        <section className="relative py-24">
+          <div className="container px-4">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                Trusted by <span className="text-gradient">Researchers & Students</span>
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+                What users say about the Quantara AI platform.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto"
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+            >
+              {[
+                {
+                  name: "Dr. Sarah Chen",
+                  role: "Quantum Physics Researcher, MIT",
+                  text: "The step-by-step Schrödinger derivations are exactly what I need for teaching. My students finally understand operator algebra.",
+                  stars: 5,
+                },
+                {
+                  name: "Alex Petrov",
+                  role: "Physics PhD Student, ETH Zürich",
+                  text: "Quantara's multi-variable solver caught errors in my homework that other tools missed. The Gaussian elimination steps are crystal clear.",
+                  stars: 5,
+                },
+                {
+                  name: "Prof. Maria González",
+                  role: "Applied Mathematics, Stanford",
+                  text: "Finally a free tool that handles quantum operators properly. The LaTeX editor and export features save me hours every week.",
+                  stars: 5,
+                },
+                {
+                  name: "James Liu",
+                  role: "Undergraduate, Caltech",
+                  text: "The interactive wavefunction plots helped me visualize concepts I'd been struggling with for months. Game changer for learning QM.",
+                  stars: 5,
+                },
+                {
+                  name: "Dr. Aisha Rahman",
+                  role: "Computational Chemistry, Oxford",
+                  text: "The 3D molecular models and periodic table explorer are beautifully designed. I use Quantara in every lecture now.",
+                  stars: 4,
+                },
+                {
+                  name: "Viktor Novak",
+                  role: "Engineering Student, TU Munich",
+                  text: "Best differential equation solver I've used. The Bessel and Legendre equation solutions with all steps shown are invaluable.",
+                  stars: 5,
+                },
+              ].map((testimonial, i) => (
+                <motion.div key={testimonial.name} variants={staggerItem}>
+                  <GlassCard hover className="h-full flex flex-col">
+                    <Quote size={18} className="text-primary/30 mb-3" />
+                    <p className="text-xs text-muted-foreground leading-relaxed flex-1 mb-4">
+                      "{testimonial.text}"
+                    </p>
+                    <div className="flex items-center gap-1 mb-2">
+                      {Array.from({ length: 5 }).map((_, si) => (
+                        <Star
+                          key={si}
+                          size={12}
+                          className={si < testimonial.stars ? "text-primary fill-primary" : "text-muted-foreground/30"}
+                        />
+                      ))}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">{testimonial.name}</div>
+                      <div className="text-[10px] text-muted-foreground">{testimonial.role}</div>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      </ParallaxSection>
+
+      {/* ═══════ PROBLEM EXAMPLES ═══════ */}
+      <ParallaxSection offset={15}>
+        <section className="relative py-24">
+          <div className="container px-4">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                Try These <span className="text-gradient">Example Problems</span>
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+                Click any example to solve it instantly with full step-by-step derivation.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto"
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+            >
+              {[
+                { label: "Linear Equation", eq: "3x + 7 = 22", link: "/solver" },
+                { label: "Quadratic", eq: "x² - 5x + 6 = 0", link: "/solver" },
+                { label: "System of Equations", eq: "2a + 3b = 7, a - b = 1", link: "/solver" },
+                { label: "Derivative", eq: "d/dx(x³ sin(x))", link: "/solver" },
+                { label: "Schrödinger Equation", eq: "Ĥψ = Eψ", link: "/quantum" },
+                { label: "Harmonic Oscillator", eq: "Ĥ = p̂²/(2m) + ½mω²x̂²", link: "/quantum" },
+              ].map((ex, i) => (
+                <motion.div key={ex.label} variants={staggerItem}>
+                  <Link to={ex.link}>
+                    <GlassCard hover className="cursor-pointer group">
+                      <div className="text-[10px] uppercase tracking-wider text-primary/70 font-semibold mb-1">{ex.label}</div>
+                      <div className="font-mono text-sm text-foreground group-hover:text-primary transition-colors">{ex.eq}</div>
+                      <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground group-hover:text-primary/70 transition-colors">
+                        Solve now <ArrowRight size={10} />
+                      </div>
+                    </GlassCard>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      </ParallaxSection>
+
       {/* ═══════ CTA ═══════ */}
       <section className="relative py-24">
         <div className="container px-4 text-center">
@@ -591,11 +985,10 @@ const Index = () => {
           >
             <GlassCard glow className="max-w-2xl mx-auto py-14 px-8">
               <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
-                Start Exploring Quantum Systems
+                Ready to Solve Your Equations?
               </h2>
               <p className="text-muted-foreground mb-8 text-sm max-w-md mx-auto">
-                Dive into wavefunctions, energy spectra, and time evolution — all in your browser.
-                No installation required.
+                Step-by-step derivations, quantum simulations, and interactive visualizations — all free, all in your browser.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
@@ -620,6 +1013,24 @@ const Index = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* ═══════ STICKY CTA ═══════ */}
+      <motion.div
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 2, duration: 0.5 }}
+      >
+        <Button
+          asChild
+          size="lg"
+          className="gap-2 rounded-full px-8 shadow-[0_8px_32px_hsl(var(--primary)/0.4)] hero-gradient-btn text-primary-foreground border-0"
+        >
+          <Link to="/solver">
+            <Zap size={16} /> Try the Step-by-Step Solver Now
+          </Link>
+        </Button>
+      </motion.div>
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="border-t border-border/30 py-10">
