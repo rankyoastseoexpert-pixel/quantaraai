@@ -2,15 +2,16 @@ import { useState, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { motion } from "framer-motion";
-import { Atom, Grid3X3, Hexagon, Compass, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Atom, Grid3X3, Hexagon, Compass, BarChart3, ChevronLeft, ChevronRight, AudioWaveform } from "lucide-react";
 
 const KronigPenneySimulator = lazy(() => import("@/components/solid-state/KronigPenneySimulator"));
 const TightBindingModel = lazy(() => import("@/components/solid-state/TightBindingModel"));
 const LatticeSimulation = lazy(() => import("@/components/solid-state/LatticeSimulation"));
 const BrillouinZone = lazy(() => import("@/components/solid-state/BrillouinZone"));
 const BandDiagramTool = lazy(() => import("@/components/solid-state/BandDiagramTool"));
+const PhononDispersion = lazy(() => import("@/components/solid-state/PhononDispersion"));
 
-type SubModule = "kronig-penney" | "tight-binding" | "lattice" | "brillouin" | "band-diagram";
+type SubModule = "kronig-penney" | "tight-binding" | "lattice" | "brillouin" | "band-diagram" | "phonon";
 
 const modules: { key: SubModule; label: string; icon: React.ElementType; desc: string }[] = [
   { key: "kronig-penney", label: "Kronig–Penney", icon: Atom, desc: "1D periodic potential band structure" },
@@ -18,6 +19,7 @@ const modules: { key: SubModule; label: string; icon: React.ElementType; desc: s
   { key: "lattice", label: "Lattice Builder", icon: Hexagon, desc: "Real & reciprocal space" },
   { key: "brillouin", label: "Brillouin Zone", icon: Compass, desc: "k-space navigation" },
   { key: "band-diagram", label: "Band Diagram", icon: BarChart3, desc: "Material band plotting" },
+  { key: "phonon", label: "Phonon Dispersion", icon: AudioWaveform, desc: "Acoustic & optical branches" },
 ];
 
 const Loader = () => (
@@ -37,6 +39,7 @@ export default function SolidState() {
       case "lattice": return <LatticeSimulation />;
       case "brillouin": return <BrillouinZone />;
       case "band-diagram": return <BandDiagramTool />;
+      case "phonon": return <PhononDispersion />;
     }
   };
 
