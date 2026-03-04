@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { solveKronigPenney } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Area, AreaChart, ComposedChart, Legend } from "recharts";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
 import { Download, FileText } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const SliderRow = ({ label, value, min, max, step, onChange, unit }: {
   label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; unit?: string;
@@ -60,6 +60,184 @@ const KP_DERIVATION = [
   },
 ];
 
+// Canvas-based textbook-style periodic potential diagram
+function PotentialBarrierCanvas({ V0, a, b }: { V0: number; a: number; b: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const W = container.clientWidth;
+    const H = 320;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Layout
+    const pad = { left: 60, right: 40, top: 50, bottom: 60 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+    const d = a + b;
+    const periods = 5;
+    const totalX = d * periods;
+    const startX = -d * Math.floor(periods / 2);
+
+    const toX = (x: number) => pad.left + ((x - startX) / totalX) * plotW;
+    const toY = (v: number) => pad.top + plotH - (v / (V0 * 1.5)) * plotH;
+
+    // Grid lines
+    ctx.strokeStyle = "rgba(100, 130, 180, 0.1)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (plotH * i) / 4;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = "rgba(150, 170, 200, 0.4)";
+    ctx.lineWidth = 1.5;
+    // x-axis at V=0
+    const yZero = toY(0);
+    ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(W - pad.right, yZero); ctx.stroke();
+    // y-axis
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + plotH); ctx.stroke();
+
+    // Draw potential barriers
+    for (let p = -Math.floor(periods / 2); p < Math.ceil(periods / 2); p++) {
+      const wellStart = p * d;
+      const wellEnd = wellStart + a;
+      const barrierEnd = wellStart + d;
+
+      // Well region fill (subtle)
+      ctx.fillStyle = "rgba(0, 200, 255, 0.06)";
+      ctx.fillRect(toX(wellStart), yZero, toX(wellEnd) - toX(wellStart), 1);
+
+      // Barrier fill
+      const bx = toX(wellEnd);
+      const bw = toX(barrierEnd) - toX(wellEnd);
+      const by = toY(V0);
+      const bh = yZero - by;
+
+      // Gradient fill for barrier
+      const grad = ctx.createLinearGradient(bx, by, bx, yZero);
+      grad.addColorStop(0, "rgba(255, 80, 80, 0.35)");
+      grad.addColorStop(1, "rgba(255, 80, 80, 0.08)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, by, bw, bh);
+
+      // Barrier outline
+      ctx.strokeStyle = "rgba(255, 100, 100, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toX(wellStart), yZero);
+      ctx.lineTo(toX(wellEnd), yZero);
+      ctx.lineTo(toX(wellEnd), by);
+      ctx.lineTo(toX(barrierEnd), by);
+      ctx.lineTo(toX(barrierEnd), yZero);
+      ctx.stroke();
+    }
+
+    // V₀ dashed reference line
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(255, 180, 50, 0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(V0));
+    ctx.lineTo(W - pad.right, toY(V0));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.font = "bold 13px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+
+    // V₀ label
+    ctx.fillStyle = "rgba(255, 180, 50, 0.9)";
+    ctx.fillText(`V₀ = ${V0} eV`, W - pad.right - 5, toY(V0) - 8);
+
+    // V = 0 label
+    ctx.fillStyle = "rgba(150, 170, 200, 0.7)";
+    ctx.font = "12px 'JetBrains Mono', monospace";
+    ctx.fillText("V = 0", pad.left - 8, yZero + 4);
+
+    // Axis labels
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(150, 170, 200, 0.7)";
+    ctx.font = "12px 'Inter', sans-serif";
+    ctx.fillText("x (Å)", W / 2, H - 10);
+    ctx.save();
+    ctx.translate(16, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("V(x) (eV)", 0, 0);
+    ctx.restore();
+
+    // Dimension arrows for 'a' and 'b' on a single period
+    const refP = 0; // reference period index
+    const ws = refP * d;
+    const we = ws + a;
+    const be = ws + d;
+    const arrowY = yZero + 25;
+
+    ctx.strokeStyle = "rgba(0, 200, 255, 0.8)";
+    ctx.fillStyle = "rgba(0, 200, 255, 0.9)";
+    ctx.lineWidth = 1.5;
+    // 'a' arrow
+    const ax1 = toX(ws), ax2 = toX(we);
+    ctx.beginPath(); ctx.moveTo(ax1, arrowY); ctx.lineTo(ax2, arrowY); ctx.stroke();
+    // arrow heads
+    ctx.beginPath(); ctx.moveTo(ax1, arrowY - 4); ctx.lineTo(ax1, arrowY + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax2, arrowY - 4); ctx.lineTo(ax2, arrowY + 4); ctx.stroke();
+    ctx.font = "bold 13px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`a = ${a} Å`, (ax1 + ax2) / 2, arrowY + 16);
+
+    // 'b' arrow
+    ctx.strokeStyle = "rgba(255, 100, 100, 0.8)";
+    ctx.fillStyle = "rgba(255, 100, 100, 0.9)";
+    const bx1 = toX(we), bx2 = toX(be);
+    ctx.beginPath(); ctx.moveTo(bx1, arrowY); ctx.lineTo(bx2, arrowY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx1, arrowY - 4); ctx.lineTo(bx1, arrowY + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx2, arrowY - 4); ctx.lineTo(bx2, arrowY + 4); ctx.stroke();
+    ctx.fillText(`b = ${b} Å`, (bx1 + bx2) / 2, arrowY + 16);
+
+    // Title
+    ctx.fillStyle = "rgba(220, 230, 255, 0.9)";
+    ctx.font = "bold 14px 'Inter', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Kronig–Penney Periodic Potential", pad.left, 25);
+
+    // d = a + b label
+    ctx.fillStyle = "rgba(150, 170, 200, 0.6)";
+    ctx.font = "12px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`d = a + b = ${(a + b).toFixed(2)} Å`, W - pad.right, 25);
+
+  }, [V0, a, b]);
+
+  useEffect(() => {
+    draw();
+    const handleResize = () => draw();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [draw]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <canvas ref={canvasRef} className="w-full rounded-lg" />
+    </div>
+  );
+}
+
 export default function KronigPenneySimulator() {
   const [V0, setV0] = useState(5);
   const [b, setB] = useState(1);
@@ -73,30 +251,6 @@ export default function KronigPenneySimulator() {
     result.energies.forEach((band, bi) => { point[`band${bi}`] = parseFloat(band[i].toFixed(4)); });
     return point;
   });
-
-  // Generate periodic potential V(x) data
-  const potentialData = useMemo(() => {
-    const d = a + b;
-    const periods = 4;
-    const points: { x: number; V: number }[] = [];
-    const step = 0.01;
-    for (let p = -periods; p < periods; p++) {
-      const offset = p * d;
-      // Well region: 0 to a → V = 0
-      for (let x = 0; x < a; x += step) {
-        points.push({ x: parseFloat((offset + x).toFixed(3)), V: 0 });
-      }
-      // Barrier region: a to d → V = V0
-      points.push({ x: parseFloat((offset + a).toFixed(3)), V: 0 });
-      points.push({ x: parseFloat((offset + a).toFixed(3)), V: V0 });
-      for (let x = a + step; x < d; x += step) {
-        points.push({ x: parseFloat((offset + x).toFixed(3)), V: V0 });
-      }
-      points.push({ x: parseFloat((offset + d).toFixed(3)), V: V0 });
-      points.push({ x: parseFloat((offset + d).toFixed(3)), V: 0 });
-    }
-    return points.sort((p1, p2) => p1.x - p2.x);
-  }, [V0, a, b]);
 
   const handleExportPNG = () => {
     const canvas = document.createElement("canvas");
@@ -127,6 +281,11 @@ export default function KronigPenneySimulator() {
 
   return (
     <div className="space-y-4">
+      {/* Potential Barrier Diagram - Full Width */}
+      <GlassCard className="p-5" id="kp-potential-chart">
+        <PotentialBarrierCanvas V0={V0} a={a} b={b} />
+      </GlassCard>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <GlassCard className="p-5 space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Parameters</h3>
@@ -149,44 +308,7 @@ export default function KronigPenneySimulator() {
             <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5 text-xs flex-1">
               <FileText size={12} /> PDF
             </Button>
-      </div>
-
-      {/* Periodic Potential V(x) */}
-      <GlassCard className="p-5" id="kp-potential-chart">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Periodic Potential V(x)</h3>
-        <div className="h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={potentialData} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-              <defs>
-                <linearGradient id="potentialGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(350, 80%, 60%)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="hsl(350, 80%, 60%)" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
-              <XAxis dataKey="x" type="number" domain={["auto", "auto"]}
-                label={{ value: "x (Å)", position: "bottom", offset: 10, style: { fill: "hsl(215, 20%, 55%)", fontSize: 12 } }}
-                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
-                stroke="hsl(222, 30%, 25%)" />
-              <YAxis domain={[-0.5, V0 * 1.3]}
-                label={{ value: "V (eV)", angle: -90, position: "insideLeft", style: { fill: "hsl(215, 20%, 55%)", fontSize: 12 } }}
-                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
-                stroke="hsl(222, 30%, 25%)" />
-              <Tooltip contentStyle={{ background: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 30%, 25%)", borderRadius: 8, fontSize: 11 }}
-                labelFormatter={(v) => `x = ${Number(v).toFixed(3)} Å`} />
-              <Area type="stepAfter" dataKey="V" stroke="hsl(350, 80%, 60%)" fill="url(#potentialGrad)"
-                strokeWidth={2} name="V(x)" isAnimationActive={false} />
-              <ReferenceLine y={0} stroke="hsl(215, 20%, 35%)" strokeDasharray="5 5" />
-              <ReferenceLine y={V0} stroke="hsl(40, 90%, 55%)" strokeDasharray="3 3" label={{ value: `V₀ = ${V0} eV`, position: "right", fill: "hsl(40, 90%, 55%)", fontSize: 10 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground font-mono">
-          <span>Well width: a = {a} Å</span>
-          <span>Barrier width: b = {b} Å</span>
-          <span>Period: d = {(a + b).toFixed(2)} Å</span>
-        </div>
-      </GlassCard>
+          </div>
         </GlassCard>
 
         <GlassCard className="p-5 lg:col-span-2" id="kp-chart">
