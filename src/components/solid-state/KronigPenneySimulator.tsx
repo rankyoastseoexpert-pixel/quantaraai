@@ -74,6 +74,30 @@ export default function KronigPenneySimulator() {
     return point;
   });
 
+  // Generate periodic potential V(x) data
+  const potentialData = useMemo(() => {
+    const d = a + b;
+    const periods = 4;
+    const points: { x: number; V: number }[] = [];
+    const step = 0.01;
+    for (let p = -periods; p < periods; p++) {
+      const offset = p * d;
+      // Well region: 0 to a → V = 0
+      for (let x = 0; x < a; x += step) {
+        points.push({ x: parseFloat((offset + x).toFixed(3)), V: 0 });
+      }
+      // Barrier region: a to d → V = V0
+      points.push({ x: parseFloat((offset + a).toFixed(3)), V: 0 });
+      points.push({ x: parseFloat((offset + a).toFixed(3)), V: V0 });
+      for (let x = a + step; x < d; x += step) {
+        points.push({ x: parseFloat((offset + x).toFixed(3)), V: V0 });
+      }
+      points.push({ x: parseFloat((offset + d).toFixed(3)), V: V0 });
+      points.push({ x: parseFloat((offset + d).toFixed(3)), V: 0 });
+    }
+    return points.sort((p1, p2) => p1.x - p2.x);
+  }, [V0, a, b]);
+
   const handleExportPNG = () => {
     const canvas = document.createElement("canvas");
     canvas.width = 1200; canvas.height = 800;
@@ -125,7 +149,44 @@ export default function KronigPenneySimulator() {
             <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5 text-xs flex-1">
               <FileText size={12} /> PDF
             </Button>
-          </div>
+      </div>
+
+      {/* Periodic Potential V(x) */}
+      <GlassCard className="p-5" id="kp-potential-chart">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Periodic Potential V(x)</h3>
+        <div className="h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={potentialData} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+              <defs>
+                <linearGradient id="potentialGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(350, 80%, 60%)" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="hsl(350, 80%, 60%)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
+              <XAxis dataKey="x" type="number" domain={["auto", "auto"]}
+                label={{ value: "x (Å)", position: "bottom", offset: 10, style: { fill: "hsl(215, 20%, 55%)", fontSize: 12 } }}
+                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
+                stroke="hsl(222, 30%, 25%)" />
+              <YAxis domain={[-0.5, V0 * 1.3]}
+                label={{ value: "V (eV)", angle: -90, position: "insideLeft", style: { fill: "hsl(215, 20%, 55%)", fontSize: 12 } }}
+                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
+                stroke="hsl(222, 30%, 25%)" />
+              <Tooltip contentStyle={{ background: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 30%, 25%)", borderRadius: 8, fontSize: 11 }}
+                labelFormatter={(v) => `x = ${Number(v).toFixed(3)} Å`} />
+              <Area type="stepAfter" dataKey="V" stroke="hsl(350, 80%, 60%)" fill="url(#potentialGrad)"
+                strokeWidth={2} name="V(x)" isAnimationActive={false} />
+              <ReferenceLine y={0} stroke="hsl(215, 20%, 35%)" strokeDasharray="5 5" />
+              <ReferenceLine y={V0} stroke="hsl(40, 90%, 55%)" strokeDasharray="3 3" label={{ value: `V₀ = ${V0} eV`, position: "right", fill: "hsl(40, 90%, 55%)", fontSize: 10 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground font-mono">
+          <span>Well width: a = {a} Å</span>
+          <span>Barrier width: b = {b} Å</span>
+          <span>Period: d = {(a + b).toFixed(2)} Å</span>
+        </div>
+      </GlassCard>
         </GlassCard>
 
         <GlassCard className="p-5 lg:col-span-2" id="kp-chart">
