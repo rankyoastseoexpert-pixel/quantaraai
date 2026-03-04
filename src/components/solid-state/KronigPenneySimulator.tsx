@@ -453,10 +453,6 @@ export default function KronigPenneySimulator() {
 
   return (
     <div className="space-y-4">
-      {/* Transcendental Equation Plot */}
-      <GlassCard className="p-5" id="kp-transcendental">
-        <TranscendentalPlotCanvas V0={V0} a={a} b={b} mass={mass} />
-      </GlassCard>
 
       {/* Potential Barrier Diagram */}
       <GlassCard className="p-5" id="kp-potential-chart">
