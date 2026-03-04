@@ -238,6 +238,178 @@ function PotentialBarrierCanvas({ V0, a, b }: { V0: number; a: number; b: number
   );
 }
 
+// Transcendental equation plot: f(αa) = P·sin(αa)/(αa) + cos(αa) vs αa
+function TranscendentalPlotCanvas({ V0, a, b, mass }: { V0: number; a: number; b: number; mass: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const W = container.clientWidth;
+    const H = 400;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { left: 55, right: 30, top: 45, bottom: 55 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    // P = m·V₀·b·a / (2ℏ²)
+    const HBAR2_OVER_2M = 3.81;
+    const P = (mass * V0 * b * a) / (2 * HBAR2_OVER_2M);
+
+    const alphaAMax = 3 * Math.PI;
+    const alphaAMin = -3 * Math.PI;
+    const yMin = -3;
+    const yMax = 3;
+
+    const toX = (aa: number) => pad.left + ((aa - alphaAMin) / (alphaAMax - alphaAMin)) * plotW;
+    const toY = (f: number) => pad.top + plotH - ((f - yMin) / (yMax - yMin)) * plotH;
+
+    // Compute f(αa) values
+    const N = 2000;
+    const points: { aa: number; f: number }[] = [];
+    for (let i = 0; i <= N; i++) {
+      const aa = alphaAMin + (alphaAMax - alphaAMin) * i / N;
+      let f: number;
+      if (Math.abs(aa) < 0.001) {
+        f = P + 1;
+      } else {
+        f = P * Math.sin(aa) / aa + Math.cos(aa);
+      }
+      points.push({ aa, f });
+    }
+
+    // Fill allowed bands (|f| <= 1)
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i], p2 = points[i + 1];
+      if (Math.abs(p1.f) <= 1 && Math.abs(p2.f) <= 1) {
+        const x1 = toX(p1.aa), x2 = toX(p2.aa);
+        const grad = ctx.createLinearGradient(x1, toY(1), x1, toY(-1));
+        grad.addColorStop(0, "rgba(0, 200, 255, 0.12)");
+        grad.addColorStop(0.5, "rgba(0, 200, 255, 0.06)");
+        grad.addColorStop(1, "rgba(0, 200, 255, 0.12)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(x1, toY(1), x2 - x1, toY(-1) - toY(1));
+      }
+    }
+
+    // Grid at nπ
+    ctx.strokeStyle = "rgba(100, 130, 180, 0.1)";
+    ctx.lineWidth = 0.5;
+    for (let n = -3; n <= 3; n++) {
+      const x = toX(n * Math.PI);
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + plotH); ctx.stroke();
+    }
+    for (let v = yMin; v <= yMax; v++) {
+      const y = toY(v);
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + plotW, y); ctx.stroke();
+    }
+
+    // +1 and -1 dashed lines
+    ctx.setLineDash([8, 4]);
+    ctx.strokeStyle = "rgba(255, 200, 50, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, toY(1)); ctx.lineTo(pad.left + plotW, toY(1)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.left, toY(-1)); ctx.lineTo(pad.left + plotW, toY(-1)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "rgba(255, 200, 50, 0.9)";
+    ctx.font = "bold 12px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("+1", pad.left - 6, toY(1) + 4);
+    ctx.fillText("−1", pad.left - 6, toY(-1) + 4);
+
+    // Axes
+    ctx.strokeStyle = "rgba(150, 170, 200, 0.5)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, toY(0)); ctx.lineTo(pad.left + plotW, toY(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(toX(0), pad.top); ctx.lineTo(toX(0), pad.top + plotH); ctx.stroke();
+
+    // Draw f(αa) curve — color changes based on allowed/forbidden
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i], p2 = points[i + 1];
+      if ((p1.f > yMax + 0.5 && p2.f > yMax + 0.5) || (p1.f < yMin - 0.5 && p2.f < yMin - 0.5)) continue;
+      const inBand = Math.abs(p1.f) <= 1 && Math.abs(p2.f) <= 1;
+      ctx.strokeStyle = inBand ? "rgba(0, 220, 255, 0.95)" : "rgba(180, 130, 255, 0.7)";
+      ctx.beginPath();
+      ctx.moveTo(toX(p1.aa), toY(Math.max(yMin, Math.min(yMax, p1.f))));
+      ctx.lineTo(toX(p2.aa), toY(Math.max(yMin, Math.min(yMax, p2.f))));
+      ctx.stroke();
+    }
+
+    // x-axis labels at nπ
+    ctx.fillStyle = "rgba(150, 170, 200, 0.8)";
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    const piLabels: Record<string, string> = { "-3": "−3π", "-2": "−2π", "-1": "−π", "0": "0", "1": "π", "2": "2π", "3": "3π" };
+    for (let n = -3; n <= 3; n++) {
+      ctx.fillText(piLabels[n.toString()] || `${n}π`, toX(n * Math.PI), pad.top + plotH + 18);
+    }
+
+    // Axis labels
+    ctx.fillStyle = "rgba(150, 170, 200, 0.7)";
+    ctx.font = "12px 'Inter', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("→ αa", W / 2, H - 8);
+    ctx.save();
+    ctx.translate(14, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("f(αa)", 0, 0);
+    ctx.restore();
+
+    // Title
+    ctx.fillStyle = "rgba(220, 230, 255, 0.9)";
+    ctx.font = "bold 14px 'Inter', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("P·sin(αa)/(αa) + cos(αa)  vs  αa", pad.left, 25);
+
+    ctx.fillStyle = "rgba(0, 200, 255, 0.8)";
+    ctx.font = "12px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`P = ${P.toFixed(2)}`, W - pad.right, 25);
+
+    // Legend
+    ctx.font = "11px 'Inter', sans-serif";
+    const legY = pad.top + 12;
+    ctx.fillStyle = "rgba(0, 220, 255, 0.3)";
+    ctx.fillRect(W - pad.right - 160, legY - 8, 12, 12);
+    ctx.fillStyle = "rgba(0, 220, 255, 0.9)";
+    ctx.textAlign = "left";
+    ctx.fillText("Allowed bands", W - pad.right - 144, legY + 2);
+    ctx.fillStyle = "rgba(180, 130, 255, 0.4)";
+    ctx.fillRect(W - pad.right - 160, legY + 10, 12, 12);
+    ctx.fillStyle = "rgba(180, 130, 255, 0.9)";
+    ctx.fillText("Forbidden gaps", W - pad.right - 144, legY + 20);
+
+  }, [V0, a, b, mass]);
+
+  useEffect(() => {
+    draw();
+    const handleResize = () => draw();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [draw]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <canvas ref={canvasRef} className="w-full rounded-lg" />
+    </div>
+  );
+}
+
 export default function KronigPenneySimulator() {
   const [V0, setV0] = useState(5);
   const [b, setB] = useState(1);
@@ -281,7 +453,12 @@ export default function KronigPenneySimulator() {
 
   return (
     <div className="space-y-4">
-      {/* Potential Barrier Diagram - Full Width */}
+      {/* Transcendental Equation Plot */}
+      <GlassCard className="p-5" id="kp-transcendental">
+        <TranscendentalPlotCanvas V0={V0} a={a} b={b} mass={mass} />
+      </GlassCard>
+
+      {/* Potential Barrier Diagram */}
       <GlassCard className="p-5" id="kp-potential-chart">
         <PotentialBarrierCanvas V0={V0} a={a} b={b} />
       </GlassCard>
