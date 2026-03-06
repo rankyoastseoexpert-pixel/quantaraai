@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { solveTightBinding } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from "recharts";
 import { Download, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -59,19 +59,19 @@ const TB_DERIVATION = [
   },
 ];
 
-// Band colors for multiple orbitals
 const BAND_PALETTE = [
   { stroke: "rgba(0, 210, 255, 0.95)", fill: "rgba(0, 210, 255, 0.12)", label: "s-band" },
   { stroke: "rgba(180, 120, 255, 0.90)", fill: "rgba(180, 120, 255, 0.10)", label: "p-band" },
   { stroke: "rgba(255, 160, 60, 0.85)", fill: "rgba(255, 160, 60, 0.08)", label: "d-band" },
 ];
 
-// ─── Research-grade Tight-Binding Canvas ──────────────────────────────
+// ─── Research-grade Tight-Binding Canvas with Fermi Energy ──────────
 function TightBindingCanvas({
-  t, epsilon, a, dim, showFreeElectron, numBands, t2, t3
+  t, epsilon, a, dim, showFreeElectron, numBands, t2, t3, fermiEnergy
 }: {
   t: number; epsilon: number; a: number; dim: "1D" | "2D";
   showFreeElectron: boolean; numBands: number; t2: number; t3: number;
+  fermiEnergy: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,22 +96,19 @@ function TightBindingCanvas({
     const plotW = W - pad.left - pad.right;
     const plotH = H - pad.top - pad.bottom;
 
-    // k range: first Brillouin zone
     const kMax = Math.PI / a;
     const N = 500;
 
     // Compute bands
-    const bands: { energies: number[]; color: typeof BAND_PALETTE[0]; label: string; tVal: number; epsilonVal: number }[] = [];
+    const bands: { energies: number[]; color: typeof BAND_PALETTE[0]; label: string }[] = [];
 
-    // Band 1: s-band
     const e1: number[] = [];
     for (let i = 0; i <= N; i++) {
       const k = -kMax + (2 * kMax) * i / N;
       e1.push(dim === "1D" ? epsilon - 2 * t * Math.cos(k * a) : epsilon - 2 * t * (Math.cos(k * a) + Math.cos(k * a * 0.7)));
     }
-    bands.push({ energies: e1, color: BAND_PALETTE[0], label: "s-band (E₀ − 2t cos ka)", tVal: t, epsilonVal: epsilon });
+    bands.push({ energies: e1, color: BAND_PALETTE[0], label: "s-band (E₀ − 2t cos ka)" });
 
-    // Band 2: p-band (offset)
     if (numBands >= 2) {
       const ep2 = epsilon + 2 * t + t2 * 2 + 1.5;
       const e2: number[] = [];
@@ -119,10 +116,9 @@ function TightBindingCanvas({
         const k = -kMax + (2 * kMax) * i / N;
         e2.push(ep2 - 2 * t2 * Math.cos(k * a));
       }
-      bands.push({ energies: e2, color: BAND_PALETTE[1], label: "p-band", tVal: t2, epsilonVal: ep2 });
+      bands.push({ energies: e2, color: BAND_PALETTE[1], label: "p-band" });
     }
 
-    // Band 3: d-band
     if (numBands >= 3) {
       const ep3 = epsilon + 4 * t + t2 * 2 + t3 * 2 + 3;
       const e3: number[] = [];
@@ -130,10 +126,9 @@ function TightBindingCanvas({
         const k = -kMax + (2 * kMax) * i / N;
         e3.push(ep3 - 2 * t3 * Math.cos(k * a));
       }
-      bands.push({ energies: e3, color: BAND_PALETTE[2], label: "d-band", tVal: t3, epsilonVal: ep3 });
+      bands.push({ energies: e3, color: BAND_PALETTE[2], label: "d-band" });
     }
 
-    // Free electron band
     const HBAR2_2M = 3.81;
     const freeE: number[] = [];
     for (let i = 0; i <= N; i++) {
@@ -141,7 +136,6 @@ function TightBindingCanvas({
       freeE.push(HBAR2_2M * k * k);
     }
 
-    // Compute y range
     let allE = bands.flatMap(b => b.energies);
     if (showFreeElectron) allE = allE.concat(freeE);
     const eMin = Math.min(...allE) - 0.5;
@@ -168,11 +162,8 @@ function TightBindingCanvas({
     ctx.strokeStyle = "rgba(255, 200, 50, 0.6)";
     ctx.lineWidth = 1.5;
     ctx.setLineDash([8, 5]);
-    // k = -π/a
     ctx.beginPath(); ctx.moveTo(toX(-kMax), pad.top); ctx.lineTo(toX(-kMax), pad.top + plotH); ctx.stroke();
-    // k = +π/a
     ctx.beginPath(); ctx.moveTo(toX(kMax), pad.top); ctx.lineTo(toX(kMax), pad.top + plotH); ctx.stroke();
-    // k = 0
     ctx.strokeStyle = "rgba(150, 175, 210, 0.3)";
     ctx.beginPath(); ctx.moveTo(toX(0), pad.top); ctx.lineTo(toX(0), pad.top + plotH); ctx.stroke();
     ctx.setLineDash([]);
@@ -182,18 +173,35 @@ function TightBindingCanvas({
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top + plotH); ctx.lineTo(pad.left + plotW, pad.top + plotH); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + plotH); ctx.stroke();
-    // Arrow tips
     ctx.fillStyle = "rgba(150, 175, 210, 0.5)";
     ctx.beginPath(); ctx.moveTo(pad.left + plotW, pad.top + plotH); ctx.lineTo(pad.left + plotW - 8, pad.top + plotH - 4); ctx.lineTo(pad.left + plotW - 8, pad.top + plotH + 4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left - 4, pad.top + 8); ctx.lineTo(pad.left + 4, pad.top + 8); ctx.fill();
 
-    // ── Draw bands with shading ──
+    // ── Fermi energy filled/empty shading ──
+    const fermiY = toY(fermiEnergy);
+    if (fermiY > pad.top && fermiY < pad.top + plotH) {
+      // Filled states below E_F (green shading)
+      const filledGrad = ctx.createLinearGradient(0, fermiY, 0, pad.top + plotH);
+      filledGrad.addColorStop(0, "rgba(34, 197, 94, 0.08)");
+      filledGrad.addColorStop(1, "rgba(34, 197, 94, 0.02)");
+      ctx.fillStyle = filledGrad;
+      ctx.fillRect(pad.left, fermiY, plotW, pad.top + plotH - fermiY);
+
+      // Empty states above E_F (subtle red shading)
+      const emptyGrad = ctx.createLinearGradient(0, pad.top, 0, fermiY);
+      emptyGrad.addColorStop(0, "rgba(239, 68, 68, 0.02)");
+      emptyGrad.addColorStop(1, "rgba(239, 68, 68, 0.06)");
+      ctx.fillStyle = emptyGrad;
+      ctx.fillRect(pad.left, pad.top, plotW, fermiY - pad.top);
+    }
+
+    // ── Draw bands with filled/empty distinction ──
     for (const band of bands) {
       const { energies, color } = band;
-
-      // Shading under curve (allowed states)
       const bandMin = Math.min(...energies);
       const bandMax = Math.max(...energies);
+
+      // Allowed-state shading under the band curve
       const shadGrad = ctx.createLinearGradient(0, toY(bandMax), 0, toY(bandMin));
       shadGrad.addColorStop(0, color.fill);
       shadGrad.addColorStop(1, color.fill.replace(/[\d.]+\)$/, "0.02)"));
@@ -203,10 +211,8 @@ function TightBindingCanvas({
         const k = -kMax + (2 * kMax) * i / N;
         const px = toX(k);
         const py = toY(energies[i]);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
-      // Close along bottom of band
       for (let i = N; i >= 0; i--) {
         const k = -kMax + (2 * kMax) * i / N;
         ctx.lineTo(toX(k), toY(bandMin));
@@ -215,29 +221,105 @@ function TightBindingCanvas({
       ctx.fillStyle = shadGrad;
       ctx.fill();
 
-      // Band curve
+      // Filled portion of band (below Fermi level) — thicker green-tinted line
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pad.left, fermiY, plotW, pad.top + plotH - fermiY + 50);
+      ctx.clip();
       ctx.beginPath();
       for (let i = 0; i <= N; i++) {
         const k = -kMax + (2 * kMax) * i / N;
         const px = toX(k);
         const py = toY(energies[i]);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.7)";
+      ctx.lineWidth = 4;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+      ctx.restore();
+
+      // Full band curve
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const k = -kMax + (2 * kMax) * i / N;
+        const px = toX(k);
+        const py = toY(energies[i]);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.strokeStyle = color.stroke;
       ctx.lineWidth = 2.5;
       ctx.lineJoin = "round";
       ctx.stroke();
 
+      // Fermi surface crossing dots (k_F)
+      for (let i = 1; i <= N; i++) {
+        const prevE = energies[i - 1];
+        const currE = energies[i];
+        if ((prevE <= fermiEnergy && currE >= fermiEnergy) || (prevE >= fermiEnergy && currE <= fermiEnergy)) {
+          // Linear interpolation to find crossing k
+          const frac = (fermiEnergy - prevE) / (currE - prevE);
+          const kCross = -kMax + (2 * kMax) * ((i - 1 + frac) / N);
+          const cx = toX(kCross);
+          const cy = toY(fermiEnergy);
+          // Glow
+          ctx.beginPath();
+          ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(34, 197, 94, 0.2)";
+          ctx.fill();
+          // Dot
+          ctx.beginPath();
+          ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(34, 197, 94, 0.95)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          // Label
+          ctx.fillStyle = "rgba(34, 197, 94, 0.9)";
+          ctx.font = "bold 9px 'JetBrains Mono', monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(`k_F`, cx, cy - 14);
+          ctx.font = "8px 'JetBrains Mono', monospace";
+          ctx.fillStyle = "rgba(34, 197, 94, 0.65)";
+          ctx.fillText(`${kCross.toFixed(2)}`, cx, cy - 5);
+        }
+      }
+
       // Band edge markers at k=0 and k=±π/a
       const eAtZero = energies[Math.floor(N / 2)];
-      const eAtEdge = energies[0]; // k = -π/a
-      // Dots
+      const eAtEdge = energies[0];
       ctx.fillStyle = color.stroke;
       [toX(0), toX(-kMax), toX(kMax)].forEach((x, idx) => {
         const e = idx === 0 ? eAtZero : eAtEdge;
         ctx.beginPath(); ctx.arc(x, toY(e), 4, 0, Math.PI * 2); ctx.fill();
       });
+    }
+
+    // ── Fermi energy line ──
+    if (fermiY > pad.top && fermiY < pad.top + plotH) {
+      ctx.setLineDash([10, 4]);
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.85)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, fermiY);
+      ctx.lineTo(pad.left + plotW, fermiY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // E_F label
+      ctx.fillStyle = "rgba(34, 197, 94, 0.95)";
+      ctx.font = "bold 12px 'JetBrains Mono', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`E_F = ${fermiEnergy.toFixed(2)} eV`, pad.left - 6, fermiY - 6);
+
+      // Filled / Empty labels
+      ctx.font = "italic 10px 'Georgia', serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(34, 197, 94, 0.5)";
+      ctx.fillText("filled states", pad.left + 4, Math.min(fermiY + 16, pad.top + plotH - 4));
+      ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
+      ctx.fillText("empty states", pad.left + 4, Math.max(fermiY - 8, pad.top + 14));
     }
 
     // ── Free electron comparison ──
@@ -251,19 +333,16 @@ function TightBindingCanvas({
         const px = toX(k);
         const py = toY(freeE[i]);
         if (py < pad.top || py > pad.top + plotH) continue;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // ── Bandwidth annotation for first band ──
+    // ── Bandwidth annotation ──
     const b1Min = Math.min(...bands[0].energies);
     const b1Max = Math.max(...bands[0].energies);
     const annoX = pad.left + plotW + 8;
-
-    // Bracket
     ctx.strokeStyle = "rgba(0, 210, 255, 0.6)";
     ctx.lineWidth = 1.5;
     const y1 = toY(b1Max), y2 = toY(b1Min);
@@ -272,7 +351,6 @@ function TightBindingCanvas({
     ctx.moveTo(annoX + 5, y1); ctx.lineTo(annoX + 5, y2);
     ctx.moveTo(annoX, y2); ctx.lineTo(annoX + 10, y2);
     ctx.stroke();
-    // Label
     ctx.fillStyle = "rgba(0, 210, 255, 0.9)";
     ctx.font = "bold 11px 'JetBrains Mono', monospace";
     ctx.textAlign = "left";
@@ -292,21 +370,12 @@ function TightBindingCanvas({
     ctx.fillStyle = "rgba(150, 170, 200, 0.8)";
     ctx.font = "12px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    const kLabels = [
-      { k: -kMax, label: "−π/a" },
-      { k: 0, label: "0" },
-      { k: kMax, label: "π/a" },
-    ];
-    kLabels.forEach(({ k, label }) => {
+    [{ k: -kMax, label: "−π/a" }, { k: 0, label: "0" }, { k: kMax, label: "π/a" }].forEach(({ k, label }) => {
       ctx.fillText(label, toX(k), pad.top + plotH + 20);
     });
-
-    // BZ boundary label
     ctx.fillStyle = "rgba(255, 200, 50, 0.6)";
     ctx.font = "italic 10px 'Georgia', serif";
     ctx.fillText("1st Brillouin Zone", toX(0), pad.top + plotH + 38);
-
-    // BZ bracket
     ctx.strokeStyle = "rgba(255, 200, 50, 0.3)";
     ctx.lineWidth = 1;
     const bzY = pad.top + plotH + 28;
@@ -332,8 +401,6 @@ function TightBindingCanvas({
     ctx.font = "bold 15px 'Inter', sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("Tight-Binding Approximation — 1D Periodic Lattice", pad.left, 22);
-
-    // Subtitle: dispersion formula
     ctx.fillStyle = "rgba(170, 190, 220, 0.7)";
     ctx.font = "italic 12px 'Georgia', serif";
     ctx.fillText("E(k) = ε₀ − 2t · cos(ka)", pad.left, 40);
@@ -349,18 +416,28 @@ function TightBindingCanvas({
       ctx.fillStyle = "rgba(200, 215, 235, 0.8)";
       ctx.fillText(band.color.label, W - pad.right - 122, legY + i * 18 + 5);
     });
+    // Fermi level legend entry
+    let extraLegY = legY + bands.length * 18;
+    ctx.setLineDash([6, 3]);
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(W - pad.right - 140, extraLegY + 1.5); ctx.lineTo(W - pad.right - 126, extraLegY + 1.5); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(34, 197, 94, 0.8)";
+    ctx.fillText("Fermi level", W - pad.right - 122, extraLegY + 5);
+    extraLegY += 18;
+
     if (showFreeElectron) {
-      const feY = legY + bands.length * 18;
       ctx.setLineDash([4, 3]);
       ctx.strokeStyle = "rgba(255, 200, 80, 0.5)";
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(W - pad.right - 140, feY + 1.5); ctx.lineTo(W - pad.right - 126, feY + 1.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W - pad.right - 140, extraLegY + 1.5); ctx.lineTo(W - pad.right - 126, extraLegY + 1.5); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = "rgba(200, 215, 235, 0.6)";
-      ctx.fillText("Free electron", W - pad.right - 122, feY + 5);
+      ctx.fillText("Free electron", W - pad.right - 122, extraLegY + 5);
     }
 
-    // ── Hopping parameter annotation ──
+    // ── Top-right info ──
     ctx.textAlign = "right";
     ctx.font = "bold 11px 'JetBrains Mono', monospace";
     ctx.fillStyle = "rgba(0, 210, 255, 0.8)";
@@ -370,7 +447,7 @@ function TightBindingCanvas({
     ctx.fillText(`ε₀ = ${epsilon.toFixed(2)} eV  |  a = ${a.toFixed(2)} Å`, W - pad.right, 36);
     ctx.fillText(`m* = ${(HBAR2_2M / (2 * t * a * a)).toFixed(4)} mₑ`, W - pad.right, 48);
 
-  }, [t, epsilon, a, dim, showFreeElectron, numBands, t2, t3]);
+  }, [t, epsilon, a, dim, showFreeElectron, numBands, t2, t3, fermiEnergy]);
 
   useEffect(() => {
     draw();
@@ -396,6 +473,7 @@ export default function TightBindingModel() {
   const [numBands, setNumBands] = useState(1);
   const [t2, setT2] = useState(0.6);
   const [t3, setT3] = useState(0.3);
+  const [fermiEnergy, setFermiEnergy] = useState(0);
 
   const result = useMemo(() => solveTightBinding({ t, epsilon, a, N: 200, dimension: dim }), [t, epsilon, a, dim]);
 
@@ -408,6 +486,10 @@ export default function TightBindingModel() {
   const bandMin = epsilon - 2 * t;
   const bandMax = epsilon + 2 * t;
   const effectiveMass = 3.81 / (2 * t * a * a);
+
+  // Determine filling fraction
+  const filledStates = result.kValues.filter((_, i) => result.energies[i] <= fermiEnergy).length;
+  const fillingFraction = filledStates / result.kValues.length;
 
   const handleExportPNG = () => {
     const canvas = document.querySelector("#tb-main-canvas canvas") as HTMLCanvasElement;
@@ -422,7 +504,7 @@ export default function TightBindingModel() {
     exportChartAsPDF("Tight-Binding Model — 1D Periodic Lattice", [
       `t = ${t} eV | ε₀ = ${epsilon} eV | a = ${a} Å | Bands: ${numBands}`,
       `Bandwidth W = 4t = ${bandwidth.toFixed(3)} eV`,
-      `Band edges: E(k=0) = ${bandMin.toFixed(3)} eV, E(k=±π/a) = ${bandMax.toFixed(3)} eV`,
+      `Fermi Energy E_F = ${fermiEnergy.toFixed(3)} eV | Filling: ${(fillingFraction * 100).toFixed(1)}%`,
       `Effective mass m* = ${effectiveMass.toFixed(4)} mₑ`,
     ], "tb-dos-chart");
   };
@@ -434,7 +516,7 @@ export default function TightBindingModel() {
         <TightBindingCanvas
           t={t} epsilon={epsilon} a={a} dim={dim}
           showFreeElectron={showFreeElectron} numBands={numBands}
-          t2={t2} t3={t3}
+          t2={t2} t3={t3} fermiEnergy={fermiEnergy}
         />
       </GlassCard>
 
@@ -443,7 +525,6 @@ export default function TightBindingModel() {
         <GlassCard className="p-5 space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Parameters</h3>
 
-          {/* Dimension toggle */}
           <div className="flex gap-2">
             {(["1D", "2D"] as const).map(d => (
               <button key={d} onClick={() => setDim(d)}
@@ -457,6 +538,21 @@ export default function TightBindingModel() {
           <SliderRow label="t (Hopping Parameter)" value={t} min={0.1} max={5} step={0.1} onChange={setT} unit=" eV" />
           <SliderRow label="ε₀ (On-site Energy)" value={epsilon} min={-5} max={5} step={0.1} onChange={setEpsilon} unit=" eV" />
           <SliderRow label="a (Lattice Constant)" value={a} min={1} max={6} step={0.1} onChange={setA} unit=" Å" />
+
+          {/* Fermi Energy */}
+          <div className="pt-3 border-t border-border/30">
+            <SliderRow label="E_F (Fermi Energy)" value={fermiEnergy} min={-10} max={15} step={0.1} onChange={setFermiEnergy} unit=" eV" color="text-green-400 bg-green-400/10" />
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="h-2 flex-1 rounded-full bg-secondary/50 overflow-hidden">
+                <motion.div
+                  className="h-full bg-green-500/60 rounded-full"
+                  animate={{ width: `${fillingFraction * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <span className="text-[10px] font-mono text-green-400">{(fillingFraction * 100).toFixed(0)}% filled</span>
+            </div>
+          </div>
 
           {/* Multi-band controls */}
           <div className="pt-3 border-t border-border/30 space-y-2">
@@ -499,6 +595,10 @@ export default function TightBindingModel() {
               <p className="text-[10px] font-mono text-primary text-right">{bandMax.toFixed(3)} eV</p>
               <p className="text-[10px] text-muted-foreground">m*:</p>
               <p className="text-[10px] font-mono text-primary text-right">{effectiveMass.toFixed(4)} mₑ</p>
+              <p className="text-[10px] text-muted-foreground">E_F:</p>
+              <p className="text-[10px] font-mono text-green-400 text-right">{fermiEnergy.toFixed(3)} eV</p>
+              <p className="text-[10px] text-muted-foreground">Band filling:</p>
+              <p className="text-[10px] font-mono text-green-400 text-right">{(fillingFraction * 100).toFixed(1)}%</p>
             </div>
             <p className="text-[10px] text-muted-foreground font-mono mt-2 p-2 rounded bg-secondary/30">
               E(k) = {epsilon.toFixed(1)} − {(2 * t).toFixed(1)}·cos(k·{a.toFixed(1)})
@@ -515,11 +615,11 @@ export default function TightBindingModel() {
           </div>
         </GlassCard>
 
-        {/* DOS */}
+        {/* DOS with Fermi level */}
         <GlassCard className="p-5 lg:col-span-2" id="tb-dos-chart">
           <h3 className="text-sm font-semibold text-foreground mb-3">Density of States — g(E)</h3>
           <p className="text-[10px] text-muted-foreground mb-2 font-mono">
-            Van Hove singularities at E = ε₀ ± 2t = {bandMin.toFixed(2)}, {bandMax.toFixed(2)} eV
+            Van Hove singularities at E = ε₀ ± 2t = {bandMin.toFixed(2)}, {bandMax.toFixed(2)} eV  |  E_F = {fermiEnergy.toFixed(2)} eV
           </p>
           <div className="h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -528,6 +628,10 @@ export default function TightBindingModel() {
                   <linearGradient id="dosGradTB" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(280, 80%, 65%)" stopOpacity={0.9} />
                     <stop offset="100%" stopColor="hsl(280, 80%, 65%)" stopOpacity={0.2} />
+                  </linearGradient>
+                  <linearGradient id="dosFilledTB" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
@@ -540,14 +644,20 @@ export default function TightBindingModel() {
                   stroke="hsl(222, 30%, 25%)" />
                 <Tooltip contentStyle={{ background: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 30%, 25%)", borderRadius: 8, fontSize: 11 }}
                   labelFormatter={(v) => `E = ${Number(v).toFixed(3)} eV`} />
-                <Bar dataKey="density" fill="url(#dosGradTB)" name="DOS" animationDuration={800} />
+                <ReferenceLine x={fermiEnergy} stroke="hsl(142, 71%, 45%)" strokeWidth={2} strokeDasharray="8 4" label={{ value: "E_F", position: "top", fill: "hsl(142, 71%, 45%)", fontSize: 11 }} />
+                <Bar dataKey="density" fill="url(#dosGradTB)" name="DOS" animationDuration={800}
+                  shape={(props: any) => {
+                    const { x, y, width, height, energy } = props;
+                    const isFilled = energy <= fermiEnergy;
+                    return <rect x={x} y={y} width={width} height={height} fill={isFilled ? "url(#dosFilledTB)" : "url(#dosGradTB)"} rx={1} />;
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </GlassCard>
       </div>
 
-      {/* Derivation */}
       <DerivationBlock title="Tight-Binding Model — Mathematical Derivation" steps={TB_DERIVATION} />
     </div>
   );

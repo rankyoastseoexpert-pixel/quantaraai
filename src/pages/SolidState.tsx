@@ -42,7 +42,7 @@ export default function SolidState() {
       case "brillouin": return <BrillouinZone />;
       case "band-diagram": return <BandDiagramTool />;
       case "phonon": return <PhononDispersion />;
-    }
+      case "dos": return <DensityOfStates />;
   };
 
   return (
