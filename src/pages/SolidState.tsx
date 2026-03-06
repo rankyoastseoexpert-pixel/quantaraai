@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { motion } from "framer-motion";
-import { Atom, Grid3X3, Hexagon, Compass, BarChart3, ChevronLeft, ChevronRight, AudioWaveform } from "lucide-react";
+import { Atom, Grid3X3, Hexagon, Compass, BarChart3, ChevronLeft, ChevronRight, AudioWaveform, Activity } from "lucide-react";
 
 const KronigPenneySimulator = lazy(() => import("@/components/solid-state/KronigPenneySimulator"));
 const TightBindingModel = lazy(() => import("@/components/solid-state/TightBindingModel"));
@@ -10,12 +10,14 @@ const LatticeSimulation = lazy(() => import("@/components/solid-state/LatticeSim
 const BrillouinZone = lazy(() => import("@/components/solid-state/BrillouinZone"));
 const BandDiagramTool = lazy(() => import("@/components/solid-state/BandDiagramTool"));
 const PhononDispersion = lazy(() => import("@/components/solid-state/PhononDispersion"));
+const DensityOfStates = lazy(() => import("@/components/solid-state/DensityOfStates"));
 
-type SubModule = "kronig-penney" | "tight-binding" | "lattice" | "brillouin" | "band-diagram" | "phonon";
+type SubModule = "kronig-penney" | "tight-binding" | "lattice" | "brillouin" | "band-diagram" | "phonon" | "dos";
 
 const modules: { key: SubModule; label: string; icon: React.ElementType; desc: string }[] = [
   { key: "kronig-penney", label: "Kronig–Penney", icon: Atom, desc: "1D periodic potential band structure" },
   { key: "tight-binding", label: "Tight-Binding", icon: Grid3X3, desc: "Hopping model & DOS" },
+  { key: "dos", label: "Density of States", icon: Activity, desc: "1D / 2D / 3D DOS & Fermi–Dirac" },
   { key: "lattice", label: "Lattice Builder", icon: Hexagon, desc: "Real & reciprocal space" },
   { key: "brillouin", label: "Brillouin Zone", icon: Compass, desc: "k-space navigation" },
   { key: "band-diagram", label: "Band Diagram", icon: BarChart3, desc: "Material band plotting" },
