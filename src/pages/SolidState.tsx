@@ -45,6 +45,7 @@ export default function SolidState() {
       case "band-diagram": return <BandDiagramTool />;
       case "phonon": return <PhononDispersion />;
       case "dos": return <DensityOfStates />;
+      case "sommerfeld": return <SommerfeldExpansion />;
     }
   };
 
