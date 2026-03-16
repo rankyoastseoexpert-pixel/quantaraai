@@ -819,6 +819,12 @@ const Index = () => {
             >
               {[
                 {
+                  name: "Miss Ayesha Ijaz",
+                  role: "Research Analyst-Math, Lahore College for Women University",
+                  text: "Just checked the Quantara AI site. Masha'Allah, it's a very professional and well-explained project! It clearly targets the right audience. The color scheme, 3D visuals, colorful periodic table, and overall interface layout are very attractive. As a user, I really liked it.",
+                  stars: 5,
+                },
+                {
                   name: "Dr. Sarah Chen",
                   role: "Quantum Physics Researcher, MIT",
                   text: "The step-by-step Schrödinger derivations are exactly what I need for teaching. My students finally understand operator algebra.",
