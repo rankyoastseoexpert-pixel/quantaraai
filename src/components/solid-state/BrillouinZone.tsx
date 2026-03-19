@@ -1,50 +1,311 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, Text, Line, Html } from "@react-three/drei";
 import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { getBrillouinZone, type LatticeType } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
-import { FileText } from "lucide-react";
+import { FileText, RotateCcw, Compass, Atom } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import * as THREE from "three";
+
+// ─── 3D Brillouin Zone Mesh ───────────────────────────────────────────
+function BZShape({ vertices, color }: { vertices: [number, number][]; color: string }) {
+  const shape = useMemo(() => {
+    const s = new THREE.Shape();
+    const scale = 0.8;
+    s.moveTo(vertices[0][0] * scale, vertices[0][1] * scale);
+    for (let i = 1; i < vertices.length; i++) {
+      s.lineTo(vertices[i][0] * scale, vertices[i][1] * scale);
+    }
+    s.closePath();
+    return s;
+  }, [vertices]);
+
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.z += delta * 0.05;
+    }
+  });
+
+  return (
+    <group>
+      {/* Filled zone */}
+      <mesh ref={meshRef} position={[0, 0, -0.01]}>
+        <shapeGeometry args={[shape]} />
+        <meshStandardMaterial color={color} transparent opacity={0.12} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Edges */}
+      <BZEdges vertices={vertices} />
+    </group>
+  );
+}
+
+function BZEdges({ vertices }: { vertices: [number, number][] }) {
+  const scale = 0.8;
+  const points = useMemo(() => {
+    const pts = vertices.map(v => new THREE.Vector3(v[0] * scale, v[1] * scale, 0));
+    pts.push(pts[0].clone());
+    return pts;
+  }, [vertices]);
+
+  const lineRef = useRef<any>(null);
+  const [pulse, setPulse] = useState(0);
+
+  useFrame((_, delta) => {
+    setPulse(prev => prev + delta * 2);
+  });
+
+  const opacity = 0.6 + 0.3 * Math.sin(pulse);
+
+  return (
+    <Line
+      points={points}
+      color="hsl(195, 100%, 60%)"
+      lineWidth={3}
+      transparent
+      opacity={opacity}
+    />
+  );
+}
+
+function SymmetryPoint({ position, label, color = "#f59e0b" }: { position: [number, number, number]; label: string; color?: string }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      const targetScale = hovered ? 1.5 : 1;
+      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 8);
+    }
+  });
+
+  return (
+    <group position={position}>
+      {/* Glow sphere */}
+      <mesh>
+        <sphereGeometry args={[0.12, 16, 16]} />
+        <meshStandardMaterial color={color} transparent opacity={0.15} />
+      </mesh>
+      {/* Core */}
+      <mesh
+        ref={meshRef}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      >
+        <sphereGeometry args={[0.06, 16, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hovered ? 1.5 : 0.5} />
+      </mesh>
+      <Text
+        position={[0, 0.18, 0]}
+        fontSize={0.12}
+        color="white"
+        anchorX="center"
+        anchorY="bottom"
+        font="/fonts/inter.woff"
+      >
+        {label}
+      </Text>
+    </group>
+  );
+}
+
+function SymmetryPath({ from, to }: { from: [number, number, number]; to: [number, number, number] }) {
+  const [progress, setProgress] = useState(0);
+
+  useFrame((_, delta) => {
+    setProgress(prev => Math.min(prev + delta * 0.8, 1));
+  });
+
+  const pts = useMemo(() => {
+    const a = new THREE.Vector3(...from);
+    const b = new THREE.Vector3(...to);
+    const mid = a.clone().lerp(b, progress);
+    return [a, mid];
+  }, [from, to, progress]);
+
+  return (
+    <Line
+      points={pts}
+      color="hsl(40, 90%, 55%)"
+      lineWidth={2}
+      dashed
+      dashSize={0.05}
+      gapSize={0.03}
+      transparent
+      opacity={0.7}
+    />
+  );
+}
+
+function GridPlane() {
+  return (
+    <gridHelper
+      args={[6, 20, "rgba(100,140,200,0.08)", "rgba(100,140,200,0.04)"]}
+      rotation={[Math.PI / 2, 0, 0]}
+      position={[0, 0, -0.02]}
+    />
+  );
+}
+
+function AxesLabels() {
+  return (
+    <group>
+      <Line points={[new THREE.Vector3(-3, 0, 0), new THREE.Vector3(3, 0, 0)]} color="rgba(150,180,220,0.3)" lineWidth={1} />
+      <Line points={[new THREE.Vector3(0, -3, 0), new THREE.Vector3(0, 3, 0)]} color="rgba(150,180,220,0.3)" lineWidth={1} />
+      <Text position={[3.2, 0, 0]} fontSize={0.12} color="rgba(150,180,220,0.6)" anchorX="left">kₓ</Text>
+      <Text position={[0, 3.2, 0]} fontSize={0.12} color="rgba(150,180,220,0.6)" anchorY="bottom">kᵧ</Text>
+    </group>
+  );
+}
+
+// ─── Band Canvas (kept as high-DPI canvas for smooth curves) ──────────
+function BandCanvas({ bandPath, pathSegments }: {
+  bandPath: { label: string; pathDist: number; energy: number }[];
+  pathSegments: { from: string; to: string; points: number }[];
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || bandPath.length === 0) return;
+
+    const W = container.clientWidth;
+    const H = 380;
+    const dpr = Math.max(window.devicePixelRatio, 2);
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { top: 30, right: 30, bottom: 50, left: 60 };
+    const pw = W - pad.left - pad.right;
+    const ph = H - pad.top - pad.bottom;
+    const dMax = Math.max(...bandPath.map(p => p.pathDist));
+    const eMin = Math.min(...bandPath.map(p => p.energy));
+    const eMax = Math.max(...bandPath.map(p => p.energy));
+    const eRange = eMax - eMin || 1;
+
+    const toX = (d: number) => pad.left + (d / dMax) * pw;
+    const toY = (e: number) => pad.top + ph - ((e - eMin) / eRange) * ph;
+
+    // Background gradient
+    const bg = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
+    bg.addColorStop(0, "rgba(59,130,246,0.02)");
+    bg.addColorStop(1, "rgba(139,92,246,0.02)");
+    ctx.fillStyle = bg;
+    ctx.fillRect(pad.left, pad.top, pw, ph);
+
+    // Grid
+    ctx.strokeStyle = "rgba(100,140,200,0.08)";
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 8; i++) {
+      const y = pad.top + (ph / 8) * i;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+    }
+
+    // Band fill
+    ctx.beginPath();
+    bandPath.forEach((p, i) => {
+      const x = toX(p.pathDist), y = toY(p.energy);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(toX(dMax), pad.top + ph);
+    ctx.lineTo(toX(0), pad.top + ph);
+    ctx.closePath();
+    const aGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
+    aGrad.addColorStop(0, "rgba(59,130,246,0.18)");
+    aGrad.addColorStop(1, "rgba(59,130,246,0.01)");
+    ctx.fillStyle = aGrad;
+    ctx.fill();
+
+    // Band curve with glow
+    ctx.shadowColor = "rgba(59,130,246,0.6)";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.strokeStyle = "hsl(210, 100%, 65%)";
+    ctx.lineWidth = 3;
+    bandPath.forEach((p, i) => {
+      const x = toX(p.pathDist), y = toY(p.energy);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Symmetry labels
+    for (const p of bandPath.filter(p => p.label)) {
+      const x = toX(p.pathDist);
+      ctx.strokeStyle = "rgba(245,158,11,0.25)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "hsl(40, 90%, 60%)";
+      ctx.font = "bold 13px 'Inter', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(p.label, x, H - pad.bottom + 22);
+    }
+
+    // Y-axis
+    ctx.fillStyle = "rgba(170,190,220,0.7)";
+    ctx.font = "10px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    for (let i = 0; i <= 6; i++) {
+      const e = eMin + (eRange / 6) * i;
+      ctx.fillText(e.toFixed(1), pad.left - 8, toY(e) + 3);
+    }
+
+    // Axis labels
+    ctx.fillStyle = "rgba(170,190,220,0.8)";
+    ctx.font = "italic 12px 'Georgia', serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Symmetry Path", pad.left + pw / 2, H - 6);
+    ctx.save();
+    ctx.translate(14, pad.top + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("E(k) (eV)", 0, 0);
+    ctx.restore();
+
+    // Axes
+    ctx.strokeStyle = "rgba(150,175,210,0.5)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ph); ctx.lineTo(pad.left + pw, pad.top + ph); ctx.stroke();
+  }, [bandPath]);
+
+  useEffect(() => {
+    draw();
+    window.addEventListener("resize", draw);
+    return () => window.removeEventListener("resize", draw);
+  }, [draw]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <canvas ref={canvasRef} className="w-full rounded-lg" />
+    </div>
+  );
+}
 
 const BZ_DERIVATION = [
-  {
-    title: "Brillouin Zone Definition",
-    content: "The first Brillouin zone (1BZ) is the Wigner-Seitz cell of the reciprocal lattice. It is the set of all k-points closer to the origin than to any other reciprocal lattice point G.",
-    equation: "1BZ = { k : |k| ≤ |k − G| for all G ≠ 0 }"
-  },
-  {
-    title: "Construction Method",
-    content: "Draw perpendicular bisector planes (Bragg planes) between the origin and each reciprocal lattice point. The smallest enclosed volume is the 1st Brillouin zone. Zone boundaries satisfy the Laue/Bragg condition.",
-    equation: "2k · G = |G|²  (Bragg plane condition)"
-  },
-  {
-    title: "Square Lattice BZ",
-    content: "For a 2D square lattice with spacing a: reciprocal vectors b₁ = (2π/a)x̂, b₂ = (2π/a)ŷ. The 1BZ is a square with vertices at (±π/a, ±π/a). High-symmetry points: Γ(0,0), X(π/a,0), M(π/a,π/a).",
-    equation: "1BZ: −π/a ≤ kₓ ≤ π/a,  −π/a ≤ k_y ≤ π/a"
-  },
-  {
-    title: "Hexagonal (Honeycomb) BZ",
-    content: "The honeycomb lattice has a hexagonal BZ. High-symmetry points are Γ (center), K (corner — Dirac point in graphene), and M (edge midpoint). The K point is where graphene's conduction and valence bands touch.",
-    equation: "K = (2π/3a)(1, 1/√3),  M = (2π/3a)(1, 0),  Γ = (0, 0)"
-  },
-  {
-    title: "Band Structure Along Symmetry Paths",
-    content: "The electronic band structure E(k) is plotted along high-symmetry paths (e.g., Γ→X→M→Γ). These paths capture all essential features: band extrema, crossings, and gap minima. The dispersion shape reveals effective masses and transport properties.",
-    equation: "v_g = (1/ℏ) ∇_k E(k)  (group velocity from band slope)"
-  },
-  {
-    title: "Tight-Binding Dispersion in BZ",
-    content: "For a 2D square lattice with nearest-neighbor hopping t, the band dispersion over the full BZ is E(kₓ,k_y) = ε₀ − 2t[cos(kₓa) + cos(k_ya)]. The bandwidth is 8t. Van Hove singularities appear at saddle points (X points).",
-    equation: "E(Γ) = ε₀ − 4t (minimum),  E(M) = ε₀ + 4t (maximum),  E(X) = ε₀ (saddle)"
-  },
+  { title: "Brillouin Zone Definition", content: "The first Brillouin zone (1BZ) is the Wigner-Seitz cell of the reciprocal lattice. It is the set of all k-points closer to the origin than to any other reciprocal lattice point G.", equation: "1BZ = { k : |k| ≤ |k − G| for all G ≠ 0 }" },
+  { title: "Construction Method", content: "Draw perpendicular bisector planes (Bragg planes) between the origin and each reciprocal lattice point. The smallest enclosed volume is the 1st Brillouin zone.", equation: "2k · G = |G|²  (Bragg plane condition)" },
+  { title: "Square Lattice BZ", content: "For a 2D square lattice with spacing a: reciprocal vectors b₁ = (2π/a)x̂, b₂ = (2π/a)ŷ. The 1BZ is a square.", equation: "1BZ: −π/a ≤ kₓ ≤ π/a,  −π/a ≤ k_y ≤ π/a" },
+  { title: "Hexagonal BZ", content: "The honeycomb lattice has a hexagonal BZ. K point is where graphene's conduction and valence bands touch.", equation: "K = (2π/3a)(1, 1/√3),  M = (2π/3a)(1, 0)" },
+  { title: "Band Structure Along Paths", content: "E(k) is plotted along high-symmetry paths capturing band extrema, crossings, and gap minima.", equation: "v_g = (1/ℏ) ∇_k E(k)  (group velocity)" },
+  { title: "Tight-Binding Dispersion", content: "For 2D square lattice with nearest-neighbor hopping t: bandwidth is 8t. Van Hove singularities at saddle points.", equation: "E(k) = ε₀ − 2t[cos(kₓa) + cos(k_ya)]" },
 ];
 
 export default function BrillouinZone() {
   const [type, setType] = useState<LatticeType>("square");
   const [a, setA] = useState(2.5);
   const [t, setT] = useState(1);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const bz = useMemo(() => getBrillouinZone(type, a), [type, a]);
 
@@ -73,220 +334,31 @@ export default function BrillouinZone() {
     return pts;
   }, [bz, a, t]);
 
-  // Draw BZ
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const size = 380;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    const ctx = canvas.getContext("2d")!;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, size, size);
-
-    // Grid
-    ctx.strokeStyle = "hsla(222, 30%, 25%, 0.15)";
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i <= 12; i++) {
-      const p = (size / 12) * i;
-      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
-    }
-
-    const allCoords = bz.vertices.flat();
-    const maxVal = Math.max(...allCoords.map(Math.abs)) * 1.4;
-    const scale = (size - 50) / (2 * maxVal);
-    const cx = size / 2, cy = size / 2;
-    const toScreen = (x: number, y: number): [number, number] => [cx + x * scale, cy - y * scale];
-
-    // Axes
-    ctx.strokeStyle = "hsla(215, 20%, 45%, 0.4)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(size, cy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, size); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // BZ fill
-    ctx.beginPath();
-    const [sx, sy] = toScreen(bz.vertices[0][0], bz.vertices[0][1]);
-    ctx.moveTo(sx, sy);
-    for (let i = 1; i < bz.vertices.length; i++) {
-      const [vx, vy] = toScreen(bz.vertices[i][0], bz.vertices[i][1]);
-      ctx.lineTo(vx, vy);
-    }
-    ctx.closePath();
-    
-    // Gradient fill
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size / 3);
-    grad.addColorStop(0, "hsla(195, 100%, 50%, 0.12)");
-    grad.addColorStop(1, "hsla(195, 100%, 50%, 0.02)");
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.strokeStyle = "hsl(195, 100%, 50%)";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Symmetry path
-    ctx.strokeStyle = "hsla(40, 90%, 55%, 0.7)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 3]);
-    for (const seg of bz.pathSegments) {
-      const from = bz.symmetryPoints.find(p => p.label === seg.from)!;
-      const to = bz.symmetryPoints.find(p => p.label === seg.to)!;
-      const [fx, fy] = toScreen(from.kx, from.ky);
-      const [tx, ty] = toScreen(to.kx, to.ky);
-      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    // Symmetry points
-    for (const sp of bz.symmetryPoints) {
-      const [px, py] = toScreen(sp.kx, sp.ky);
-      // Glow
-      const glow = ctx.createRadialGradient(px, py, 0, px, py, 15);
-      glow.addColorStop(0, "hsla(40, 90%, 55%, 0.4)");
-      glow.addColorStop(1, "transparent");
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(px, py, 15, 0, 2 * Math.PI);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(px, py, 7, 0, 2 * Math.PI);
-      ctx.fillStyle = "hsl(40, 90%, 55%)";
-      ctx.fill();
-      ctx.strokeStyle = "hsl(40, 90%, 75%)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 13px Inter";
-      ctx.textAlign = "center";
-      ctx.fillText(sp.label, px, py - 14);
-    }
-
-    ctx.fillStyle = "hsl(215, 20%, 55%)";
-    ctx.font = "12px Inter";
-    ctx.textAlign = "right";
-    ctx.fillText("kₓ", size - 8, cy - 8);
-    ctx.textAlign = "center";
-    ctx.fillText("kᵧ", cx + 14, 16);
-  }, [bz]);
-
-  // Band along path
-  const bandCanvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = bandCanvasRef.current;
-    if (!canvas || bandPath.length === 0) return;
-    const w = 520, h = 320;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    const ctx = canvas.getContext("2d")!;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, w, h);
-
-    const margin = { top: 20, right: 25, bottom: 45, left: 55 };
-    const pw = w - margin.left - margin.right;
-    const ph = h - margin.top - margin.bottom;
-    const dMax = Math.max(...bandPath.map(p => p.pathDist));
-    const eMin = Math.min(...bandPath.map(p => p.energy));
-    const eMax = Math.max(...bandPath.map(p => p.energy));
-    const eRange = eMax - eMin || 1;
-
-    const toX = (d: number) => margin.left + (d / dMax) * pw;
-    const toY = (e: number) => margin.top + ph - ((e - eMin) / eRange) * ph;
-
-    // Grid
-    ctx.strokeStyle = "hsla(222, 30%, 25%, 0.25)";
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i <= 6; i++) {
-      const y = margin.top + (ph / 6) * i;
-      ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(w - margin.right, y); ctx.stroke();
-    }
-
-    // Band area gradient
-    ctx.beginPath();
-    bandPath.forEach((p, i) => {
-      const x = toX(p.pathDist), y = toY(p.energy);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.lineTo(toX(dMax), margin.top + ph);
-    ctx.lineTo(toX(0), margin.top + ph);
-    ctx.closePath();
-    const areaGrad = ctx.createLinearGradient(0, margin.top, 0, margin.top + ph);
-    areaGrad.addColorStop(0, "hsla(195, 100%, 50%, 0.15)");
-    areaGrad.addColorStop(1, "hsla(195, 100%, 50%, 0)");
-    ctx.fillStyle = areaGrad;
-    ctx.fill();
-
-    // Band curve
-    ctx.beginPath();
-    ctx.strokeStyle = "hsl(195, 100%, 50%)";
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = "hsl(195, 100%, 50%)";
-    ctx.shadowBlur = 6;
-    bandPath.forEach((p, i) => {
-      const x = toX(p.pathDist), y = toY(p.energy);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Symmetry labels
-    for (const p of bandPath.filter(p => p.label)) {
-      const x = toX(p.pathDist);
-      ctx.beginPath();
-      ctx.strokeStyle = "hsla(40, 90%, 55%, 0.3)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.moveTo(x, margin.top); ctx.lineTo(x, h - margin.bottom); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = "hsl(40, 90%, 60%)";
-      ctx.font = "bold 12px Inter";
-      ctx.textAlign = "center";
-      ctx.fillText(p.label, x, h - margin.bottom + 20);
-    }
-
-    // Y axis ticks
-    ctx.fillStyle = "hsl(215, 20%, 55%)";
-    ctx.font = "10px JetBrains Mono";
-    ctx.textAlign = "right";
-    for (let i = 0; i <= 6; i++) {
-      const e = eMin + (eRange / 6) * i;
-      ctx.fillText(e.toFixed(1), margin.left - 6, toY(e) + 3);
-    }
-    ctx.save();
-    ctx.translate(16, h / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center";
-    ctx.font = "12px Inter";
-    ctx.fillStyle = "hsl(215, 20%, 55%)";
-    ctx.fillText("E (eV)", 0, 0);
-    ctx.restore();
-  }, [bandPath]);
-
-  const handleExportPDF = () => {
-    exportChartAsPDF(`Brillouin Zone — ${type.charAt(0).toUpperCase() + type.slice(1)} Lattice`, [
-      `Lattice: ${type} | a = ${a} Å | t = ${t} eV`,
-      `Path: ${bz.pathSegments.map(s => s.from).join(" → ")} → ${bz.pathSegments[bz.pathSegments.length - 1].to}`,
-      ...bz.symmetryPoints.map(sp => `${sp.label}: (${sp.kx.toFixed(3)}, ${sp.ky.toFixed(3)}) Å⁻¹`),
-    ], "bz-vis");
-  };
+  const scale3D = 0.8;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <GlassCard className="p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Configuration</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Controls */}
+        <GlassCard className="p-5 space-y-4 lg:col-span-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Compass size={14} className="text-primary" /> Configuration
+          </h3>
           <div className="space-y-1">
             {(["square", "honeycomb"] as const).map(lt => (
               <button key={lt} onClick={() => setType(lt)}
-                className={`w-full text-left text-xs px-3 py-2 rounded-md border transition-colors ${
-                  type === lt ? "bg-primary/15 border-primary/30 text-primary font-medium" : "border-border/50 text-muted-foreground hover:bg-secondary/50"
+                className={`w-full text-left text-xs px-3 py-2.5 rounded-lg border transition-all duration-300 ${
+                  type === lt
+                    ? "bg-primary/15 border-primary/30 text-primary font-medium shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                    : "border-border/50 text-muted-foreground hover:bg-secondary/50 hover:border-border"
                 }`}
-              >{lt.charAt(0).toUpperCase() + lt.slice(1)}</button>
+              >
+                <span className="flex items-center gap-2">
+                  <Atom size={12} />
+                  {lt.charAt(0).toUpperCase() + lt.slice(1)}
+                  {lt === "honeycomb" && <span className="text-[9px] opacity-60">(Graphene)</span>}
+                </span>
+              </button>
             ))}
           </div>
           <div className="space-y-1">
@@ -304,33 +376,85 @@ export default function BrillouinZone() {
             <Slider min={0.1} max={3} step={0.1} value={[t]} onValueChange={([v]) => setT(v)} className="h-4" />
           </div>
 
-          <div className="pt-3 border-t border-border/30 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-foreground">High-Symmetry Points</p>
+          <div className="pt-3 border-t border-border/30 space-y-1.5">
+            <p className="text-xs font-semibold text-foreground">High-Symmetry Points</p>
             {bz.symmetryPoints.map(sp => (
-              <p key={sp.label} className="font-mono">{sp.label}: ({sp.kx.toFixed(3)}, {sp.ky.toFixed(3)}) Å⁻¹</p>
+              <motion.div
+                key={sp.label}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-2 text-xs font-mono text-muted-foreground"
+              >
+                <span className="w-5 h-5 rounded-full bg-amber-500/15 text-amber-400 text-[10px] font-bold flex items-center justify-center">{sp.label}</span>
+                ({sp.kx.toFixed(3)}, {sp.ky.toFixed(3)}) Å⁻¹
+              </motion.div>
             ))}
           </div>
 
-          <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5 text-xs w-full">
+          <Button size="sm" variant="outline" onClick={() => exportChartAsPDF(`BZ — ${type}`, [
+            `Lattice: ${type} | a = ${a} Å | t = ${t} eV`,
+            `Path: ${bz.pathSegments.map(s => s.from).join(" → ")} → ${bz.pathSegments[bz.pathSegments.length - 1].to}`,
+          ], "bz-3d")} className="gap-1.5 text-xs w-full">
             <FileText size={12} /> Export PDF
           </Button>
         </GlassCard>
 
-        <GlassCard className="p-4 flex flex-col items-center" id="bz-vis">
-          <h3 className="text-sm font-semibold text-foreground mb-2 self-start">1st Brillouin Zone (k-space)</h3>
-          <canvas ref={canvasRef} style={{ width: 380, height: 380 }} className="rounded-lg" />
+        {/* 3D Brillouin Zone */}
+        <GlassCard className="lg:col-span-5 p-0 overflow-hidden" id="bz-3d">
+          <div className="p-3 pb-0">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <RotateCcw size={12} className="text-muted-foreground animate-spin" style={{ animationDuration: "8s" }} />
+              1st Brillouin Zone — 3D View
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Drag to rotate • Scroll to zoom</p>
+          </div>
+          <div className="h-[440px]">
+            <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ antialias: true, alpha: true }}>
+              <ambientLight intensity={0.4} />
+              <pointLight position={[5, 5, 5]} intensity={0.8} color="#63b3ed" />
+              <pointLight position={[-5, -3, 3]} intensity={0.4} color="#a78bfa" />
+
+              <GridPlane />
+              <AxesLabels />
+              <BZShape vertices={bz.vertices} color="hsl(195, 100%, 50%)" />
+
+              {/* Symmetry points */}
+              {bz.symmetryPoints.map(sp => (
+                <SymmetryPoint
+                  key={sp.label}
+                  position={[sp.kx * scale3D, sp.ky * scale3D, 0]}
+                  label={sp.label}
+                />
+              ))}
+
+              {/* Symmetry paths */}
+              {bz.pathSegments.map((seg, i) => {
+                const from = bz.symmetryPoints.find(p => p.label === seg.from)!;
+                const to = bz.symmetryPoints.find(p => p.label === seg.to)!;
+                return (
+                  <SymmetryPath
+                    key={i}
+                    from={[from.kx * scale3D, from.ky * scale3D, 0]}
+                    to={[to.kx * scale3D, to.ky * scale3D, 0]}
+                  />
+                );
+              })}
+
+              <OrbitControls enablePan={false} enableDamping dampingFactor={0.05} minDistance={2} maxDistance={8} />
+            </Canvas>
+          </div>
         </GlassCard>
 
-        <GlassCard className="p-4 flex flex-col items-center">
-          <h3 className="text-sm font-semibold text-foreground mb-2 self-start">Band Structure Along Path</h3>
-          <canvas ref={bandCanvasRef} style={{ width: 520, height: 320 }} className="rounded-lg" />
-          <p className="text-[10px] text-muted-foreground mt-2 font-mono">
+        {/* Band Structure */}
+        <GlassCard className="lg:col-span-4 p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-2">E(k) Along Symmetry Path</h3>
+          <p className="text-[10px] text-muted-foreground mb-3 font-mono">
             {bz.pathSegments.map(s => s.from).join(" → ")} → {bz.pathSegments[bz.pathSegments.length - 1].to}
           </p>
+          <BandCanvas bandPath={bandPath} pathSegments={bz.pathSegments} />
         </GlassCard>
       </div>
 
-      {/* Derivation */}
       <DerivationBlock title="Brillouin Zone Theory & Derivation" steps={BZ_DERIVATION} />
     </div>
   );
