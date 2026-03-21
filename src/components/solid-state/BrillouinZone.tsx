@@ -105,7 +105,6 @@ function SymmetryPoint({ position, label, color = "#f59e0b" }: { position: [numb
         color="white"
         anchorX="center"
         anchorY="bottom"
-        font="/fonts/inter.woff"
       >
         {label}
       </Text>

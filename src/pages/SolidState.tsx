@@ -36,7 +36,7 @@ export default function SolidState() {
   const [active, setActive] = useState<SubModule>("kronig-penney");
   const [collapsed, setCollapsed] = useState(false);
 
-  const ActiveModule = () => {
+  const renderModule = () => {
     switch (active) {
       case "kronig-penney": return <KronigPenneySimulator />;
       case "tight-binding": return <TightBindingModel />;
@@ -127,7 +127,7 @@ export default function SolidState() {
             </motion.div>
 
             <Suspense fallback={<Loader />}>
-              <ActiveModule />
+              {renderModule()}
             </Suspense>
           </div>
         </main>
