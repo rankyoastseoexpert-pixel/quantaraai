@@ -127,7 +127,7 @@ export default function SolidState() {
             </motion.div>
 
             <Suspense fallback={<Loader />}>
-              <ActiveModule />
+              {renderModule()}
             </Suspense>
           </div>
         </main>
