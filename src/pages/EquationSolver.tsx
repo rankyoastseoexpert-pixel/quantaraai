@@ -747,7 +747,7 @@ const EquationSolver = () => {
 
           {/* Linear */}
           <TabsContent value="linear">
-            <GlassCard glow>
+            <GlassCard glow id="equation-solver-area">
               <h2 className="text-lg font-semibold mb-4 text-foreground">Linear Equation Solver</h2>
               <div className="flex gap-3 mb-6">
                 <Input
