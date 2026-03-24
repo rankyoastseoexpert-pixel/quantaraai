@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen, FlaskConical } from "lucide-react";
+import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen, FlaskConical, Download } from "lucide-react";
 import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
