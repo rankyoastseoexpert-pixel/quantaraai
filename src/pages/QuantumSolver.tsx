@@ -373,7 +373,7 @@ const QuantumSolver = () => {
             )}
 
             {/* Graph */}
-            <GlassCard className="min-h-[300px]">
+            <GlassCard className="min-h-[300px]" id="quantum-graph-area">
               <h2 className="text-sm font-semibold text-foreground mb-3">
                 Wavefunction ψ(x) {activePreset && `— ${activePreset} (n=${quantumN})`}
               </h2>
@@ -443,8 +443,16 @@ const QuantumSolver = () => {
             <GlassCard>
               <h2 className="text-sm font-semibold text-foreground mb-3">Export</h2>
               <div className="flex flex-wrap gap-2">
-                {["SVG", "PNG", "JSON", "PDF"].map(fmt => (
-                  <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary">
+                {["SVG", "PNG", "JPG", "JSON", "PDF"].map(fmt => (
+                  <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary"
+                    onClick={() => {
+                      if (fmt === "JPG" || fmt === "PNG") {
+                        import("@/lib/imageExport").then(({ exportContainerAsImage }) => {
+                          exportContainerAsImage("#quantum-graph-area", fmt === "JPG" ? "jpeg" : "png", "quantum-graph");
+                        });
+                      }
+                    }}
+                  >
                     <Download size={12} /> {fmt}
                   </Button>
                 ))}

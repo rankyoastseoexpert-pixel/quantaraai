@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen, FlaskConical } from "lucide-react";
+import { Play, RotateCcw, ChevronRight, Plus, Trash2, BookOpen, FlaskConical, Download } from "lucide-react";
 import * as math from "mathjs";
 import LinearSolverGraph from "@/components/LinearSolverGraph";
 import PhysicsPresets from "@/components/PhysicsPresets";
@@ -747,7 +747,7 @@ const EquationSolver = () => {
 
           {/* Linear */}
           <TabsContent value="linear">
-            <GlassCard glow>
+            <GlassCard glow id="equation-solver-area">
               <h2 className="text-lg font-semibold mb-4 text-foreground">Linear Equation Solver</h2>
               <div className="flex gap-3 mb-6">
                 <Input
@@ -816,9 +816,28 @@ const EquationSolver = () => {
                 )}
               </div>
               {linearGraph && (
-                <div className="mt-6">
+                <div className="mt-6" id="equation-graph-area">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Graph: y = {linearGraph.m}x + {linearGraph.c}</h3>
                   <LinearSolverGraph m={linearGraph.m} c={linearGraph.c} />
+                </div>
+              )}
+              {(linearResult || linearGraph) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["PNG", "JPG"].map(fmt => (
+                    <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary"
+                      onClick={() => {
+                        import("@/lib/imageExport").then(({ exportContainerAsImage }) => {
+                          exportContainerAsImage(
+                            linearGraph ? "#equation-graph-area" : "#equation-solver-area",
+                            fmt === "JPG" ? "jpeg" : "png",
+                            "equation-result"
+                          );
+                        });
+                      }}
+                    >
+                      <Download size={12} /> {fmt}
+                    </Button>
+                  ))}
                 </div>
               )}
             </GlassCard>
