@@ -816,9 +816,28 @@ const EquationSolver = () => {
                 )}
               </div>
               {linearGraph && (
-                <div className="mt-6">
+                <div className="mt-6" id="equation-graph-area">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Graph: y = {linearGraph.m}x + {linearGraph.c}</h3>
                   <LinearSolverGraph m={linearGraph.m} c={linearGraph.c} />
+                </div>
+              )}
+              {(linearResult || linearGraph) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["PNG", "JPG"].map(fmt => (
+                    <Button key={fmt} variant="outline" size="sm" className="gap-1.5 border-border hover:bg-primary/10 hover:text-primary"
+                      onClick={() => {
+                        import("@/lib/imageExport").then(({ exportContainerAsImage }) => {
+                          exportContainerAsImage(
+                            linearGraph ? "#equation-graph-area" : "#equation-solver-area",
+                            fmt === "JPG" ? "jpeg" : "png",
+                            "equation-result"
+                          );
+                        });
+                      }}
+                    >
+                      <Download size={12} /> {fmt}
+                    </Button>
+                  ))}
                 </div>
               )}
             </GlassCard>
