@@ -27,6 +27,9 @@ const diffPresets = [
   { name: "Wave Equation", eq: "∂²u/∂t² = c²∇²u", key: "Wave Equation" },
   { name: "Laplace Equation", eq: "∇²u = 0", key: "Laplace Equation" },
   { name: "Helmholtz Equation", eq: "∇²f + k²f = 0", key: "Helmholtz Equation" },
+  { name: "Schrödinger Equation", eq: "iℏ ∂ψ/∂t = Ĥψ", key: "Schrödinger Equation" },
+  { name: "Maxwell–Faraday Law", eq: "∇ × E⃗ = −∂B⃗/∂t", key: "Maxwell–Faraday Law" },
+  { name: "Ampère-Maxwell Law", eq: "∇ × B⃗ = μ₀J⃗ + μ₀ε₀ ∂E⃗/∂t", key: "Ampère-Maxwell Law" },
 ];
 
 const integralPresets = [
