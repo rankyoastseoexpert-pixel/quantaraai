@@ -1563,9 +1563,20 @@ const EquationSolver = () => {
 
           {/* Presets */}
           <TabsContent value="presets">
+            {/* Physics Equations Library — Primary Section */}
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Physics <span className="text-gradient">Equations Library</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Comprehensive real-world physics equations with interactive graphs, step-by-step derivations, and physical explanations across Kinematics, Waves, SHM, Electromagnetism, Thermodynamics, and Quantum Mechanics.
+            </p>
+            <PhysicsPresets />
+
+            <div className="mt-8" />
+
             <GlassCard glow className="mb-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Differential Equation Presets</h2>
-              <p className="text-sm text-muted-foreground mb-4">Classic differential equation templates</p>
+              <p className="text-sm text-muted-foreground mb-4">Classic differential equations — click to load and solve in the Differential tab</p>
               <div className="grid sm:grid-cols-2 gap-3">
                 {diffPresets.map((p, i) => (
                   <motion.div key={p.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
@@ -1592,14 +1603,6 @@ const EquationSolver = () => {
                 ))}
               </div>
             </GlassCard>
-
-            <h2 className="text-lg font-semibold text-foreground mb-4">
-              Physics <span className="text-gradient">Linear Equations</span>
-            </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              All these equations follow the y = mx + c form. Select one to see the mapping, explanation, and graph.
-            </p>
-            <PhysicsPresets />
           </TabsContent>
         </Tabs>
       </div>
