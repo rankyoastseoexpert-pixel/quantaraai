@@ -143,17 +143,14 @@ function diagonalize(H: number[][]): EigenResult {
   const n = H.length;
   try {
     const result = eigs(matrix(H));
-    const vals = result.values.toArray() as (number | { re: number; im: number })[];
-    const vecs = result.vectors.toArray() as number[][];
+    // mathjs eigs returns { values, eigenvectors: [{value, vector}] }
+    const eigenvectors = result.eigenvectors;
 
-    // Extract real eigenvalues and sort
     const pairs: { energy: number; orbital: number[] }[] = [];
-    for (let i = 0; i < vals.length; i++) {
-      const e = typeof vals[i] === "number" ? vals[i] as number : (vals[i] as any).re || 0;
-      const orbital = vecs.map(row => {
-        const v = row[i];
-        return typeof v === "number" ? v : (v as any).re || 0;
-      });
+    for (const ev of eigenvectors) {
+      const e = typeof ev.value === "number" ? ev.value : (ev.value as any).re || 0;
+      const vec = (ev.vector as any).toArray ? (ev.vector as any).toArray() : ev.vector;
+      const orbital = (vec as any[]).map((v: any) => typeof v === "number" ? v : v.re || 0);
       pairs.push({ energy: e, orbital });
     }
 
