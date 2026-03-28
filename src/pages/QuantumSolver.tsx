@@ -7,10 +7,12 @@ import LaTeXEquationEditor from "@/components/LaTeXEquationEditor";
 import OrbitalViewer3D from "@/components/quantum-solver/OrbitalViewer3D";
 import AnalysisGraphs from "@/components/quantum-solver/AnalysisGraphs";
 import SCFControlPanel from "@/components/quantum-solver/SCFControlPanel";
+import DensityHeatmap from "@/components/quantum-solver/DensityHeatmap";
+import EnergyLevelDiagram from "@/components/quantum-solver/EnergyLevelDiagram";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Play, BookOpen, Atom, FlaskConical, Download } from "lucide-react";
+import { Play, BookOpen, Atom, FlaskConical, Download, Vibrate, MapPin } from "lucide-react";
 import {
   derivationDatabase,
   detectEquationAdvanced,
@@ -18,7 +20,12 @@ import {
   diffRules,
   type FullDerivation,
 } from "@/lib/quantumEngine";
-import { runSCFSolver, generateOrbitalGrid, type SCFResult } from "@/lib/dftSolver";
+import {
+  runSCFSolver, generateOrbitalGrid,
+  optimizeGeometry, computeVibrationalModes,
+  type SCFResult, type ElementType, type SymmetryType, type FunctionalType, type VibrationalMode,
+  ELEMENT_DATA,
+} from "@/lib/dftSolver";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // ── Visualization presets ──
@@ -126,6 +133,9 @@ const QuantumSolver = () => {
   const [showPositive, setShowPositive] = useState(true);
   const [showNegative, setShowNegative] = useState(true);
   const [orbitalGrid, setOrbitalGrid] = useState<number[][][] | null>(null);
+  const [vibModes, setVibModes] = useState<VibrationalMode[]>([]);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optResult, setOptResult] = useState<{ energyHistory: number[]; converged: boolean } | null>(null);
 
   // ── Active tab ──
   const [activeTab, setActiveTab] = useState("scf");
@@ -150,20 +160,31 @@ const QuantumSolver = () => {
     }
   }, [input]);
 
-  const handleRunSCF = useCallback((size: number, method: "DFT" | "Tight-Binding") => {
+  const handleRunSCF = useCallback((
+    size: number,
+    method: "DFT" | "Tight-Binding",
+    element: ElementType,
+    symmetry: SymmetryType,
+    functional: FunctionalType,
+    latticeConst?: number
+  ) => {
     setIsRunning(true);
     setScfResult(null);
     setOrbitalGrid(null);
+    setVibModes([]);
+    setOptResult(null);
 
-    // Run async to not block UI
     setTimeout(() => {
       try {
-        const result = runSCFSolver(size, method);
+        const result = runSCFSolver(size, method, element, symmetry, functional, latticeConst);
         setScfResult(result);
         setSelectedOrbital(result.homoIndex);
-        // Generate orbital grid for HOMO
-        const grid = generateOrbitalGrid(result.atoms, result.finalOrbitals, result.homoIndex, 24);
+        const grid = generateOrbitalGrid(result.atoms, result.finalOrbitals, result.homoIndex, 24, element);
         setOrbitalGrid(grid);
+
+        // Compute vibrational modes
+        const modes = computeVibrationalModes(result.atoms, result.convergedDensity, element);
+        setVibModes(modes);
       } catch (err) {
         console.error("SCF solver error:", err);
       } finally {
@@ -175,9 +196,24 @@ const QuantumSolver = () => {
   const handleOrbitalChange = useCallback((idx: number) => {
     setSelectedOrbital(idx);
     if (scfResult) {
-      const grid = generateOrbitalGrid(scfResult.atoms, scfResult.finalOrbitals, idx, 24);
+      const grid = generateOrbitalGrid(scfResult.atoms, scfResult.finalOrbitals, idx, 24, scfResult.element);
       setOrbitalGrid(grid);
     }
+  }, [scfResult]);
+
+  const handleOptimize = useCallback(() => {
+    if (!scfResult) return;
+    setIsOptimizing(true);
+    setTimeout(() => {
+      try {
+        const opt = optimizeGeometry(scfResult.atoms, scfResult.element, "Tight-Binding", "LDA", 20);
+        setOptResult({ energyHistory: opt.energyHistory, converged: opt.converged });
+      } catch (err) {
+        console.error("Optimization error:", err);
+      } finally {
+        setIsOptimizing(false);
+      }
+    }, 50);
   }, [scfResult]);
 
   const loadPreset = (key: string) => {
@@ -194,7 +230,7 @@ const QuantumSolver = () => {
             Quantum <span className="text-gradient">Solver</span>
           </h1>
           <p className="text-muted-foreground text-sm mb-6">
-            Research-grade symbolic derivations & DFT/Tight-Binding SCF solver for silver nanoclusters with 3D orbital visualization.
+            Multi-element DFT/Tight-Binding SCF solver with 3D orbital visualization, density heatmaps, and geometry optimization.
           </p>
         </motion.div>
 
@@ -236,7 +272,7 @@ const QuantumSolver = () => {
                     3D Molecular Orbital Viewer
                     {scfResult && (
                       <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                        Ag<sub>{scfResult.atoms.length}</sub> — Orbital {selectedOrbital + 1}
+                        {scfResult.element}<sub>{scfResult.atoms.length}</sub> — Orbital {selectedOrbital + 1}
                         {selectedOrbital === scfResult.homoIndex ? " (HOMO)" : selectedOrbital === scfResult.lumoIndex ? " (LUMO)" : ""}
                       </span>
                     )}
@@ -251,22 +287,100 @@ const QuantumSolver = () => {
                   />
                 </GlassCard>
 
+                {/* 2D Density Heatmap + Energy Level Diagram side by side */}
+                {scfResult && (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <DensityHeatmap result={scfResult} />
+                    <EnergyLevelDiagram
+                      result={scfResult}
+                      selectedOrbital={selectedOrbital}
+                      onOrbitalChange={handleOrbitalChange}
+                    />
+                  </div>
+                )}
+
                 {scfResult && <AnalysisGraphs result={scfResult} />}
+
+                {/* Vibrational Modes & Geometry Optimization */}
+                {scfResult && (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Vibrational Modes */}
+                    <GlassCard>
+                      <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <Vibrate size={14} className="text-primary" />
+                        Vibrational Modes
+                      </h3>
+                      {vibModes.length > 0 ? (
+                        <div className="space-y-1">
+                          {vibModes.map((mode, i) => (
+                            <div key={i} className="flex items-center justify-between px-2 py-1.5 rounded text-[10px] font-mono bg-secondary/30 border border-border/20">
+                              <span className="text-foreground">Mode {i + 1}</span>
+                              <span className="text-primary">{mode.frequency.toFixed(1)} cm⁻¹</span>
+                              <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary/60 rounded-full"
+                                  style={{ width: `${Math.min(100, mode.frequency / 5)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground">Run solver to compute modes</p>
+                      )}
+                    </GlassCard>
+
+                    {/* Geometry Optimization */}
+                    <GlassCard>
+                      <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <MapPin size={14} className="text-primary" />
+                        Geometry Optimization
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full gap-1.5 border-border mb-3 h-8 text-[10px]"
+                        onClick={handleOptimize}
+                        disabled={isOptimizing || !scfResult}
+                      >
+                        {isOptimizing ? "Optimizing..." : "Run Gradient Descent"}
+                      </Button>
+                      {optResult && (
+                        <div className="space-y-2">
+                          <div className="text-[10px] text-muted-foreground">
+                            {optResult.converged ? "✓ Converged" : "✗ Not converged"} ({optResult.energyHistory.length} steps)
+                          </div>
+                          <ResponsiveContainer width="100%" height={120}>
+                            <LineChart data={optResult.energyHistory.map((e, i) => ({ step: i + 1, energy: e }))}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="step" fontSize={8} stroke="hsl(var(--muted-foreground))" />
+                              <YAxis fontSize={8} stroke="hsl(var(--muted-foreground))" />
+                              <Line type="monotone" dataKey="energy" stroke="hsl(var(--primary))" strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </GlassCard>
+                  </div>
+                )}
 
                 {!scfResult && !isRunning && (
                   <GlassCard className="py-12">
                     <div className="text-center">
                       <FlaskConical className="h-16 w-16 text-primary/20 mx-auto mb-4" strokeWidth={1} />
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Quantum Silver Cluster Solver</h3>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Multi-Element Quantum Cluster Solver</h3>
                       <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4">
-                        Configure a silver nanocluster (Ag₁₃, Ag₅₅) in the control panel and run the self-consistent field solver.
-                        The solver iterates H(n)ψ = εψ until energy converges within 10⁻⁴ eV.
+                        Select an element (Ag, Au, Cu, Al, Pt), configure the cluster geometry, and run the SCF solver.
+                        Features LDA/GGA functionals, Pulay mixing, 3D orbitals, density heatmaps, and vibrational analysis.
                       </p>
                       <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto text-[10px]">
                         {[
-                          ["SCF Convergence", "Total energy vs iteration"],
-                          ["Density of States", "Energy spectrum with Fermi level"],
-                          ["3D Orbitals", "Isosurface |ψ|² visualization"],
+                          ["5 Elements", "Ag, Au, Cu, Al, Pt"],
+                          ["LDA & GGA", "Slater + VWN / PBE"],
+                          ["3D Orbitals", "|ψ|² volumetric cloud"],
+                          ["Density Heatmap", "2D cross-section view"],
+                          ["Energy Levels", "Interactive ladder diagram"],
+                          ["Vibrations", "Normal mode frequencies"],
                         ].map(([t, d]) => (
                           <div key={t} className="p-2 rounded border border-border/30 bg-secondary/20">
                             <div className="font-semibold text-foreground">{t}</div>
