@@ -2,11 +2,12 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { solveKronigPenney } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
-import { Download, FileText, Play, Pause } from "lucide-react";
+import { Download, FileText, Play, Pause, Calculator } from "lucide-react";
 import { motion } from "framer-motion";
 
 const SliderRow = ({ label, value, min, max, step, onChange, unit, color }: {
@@ -458,11 +459,149 @@ export default function KronigPenneySimulator() {
     ], "kp-chart");
   };
 
+  // Equation calculator state
+  const [sinVal, setSinVal] = useState("");
+  const [cosVal, setCosVal] = useState("");
+  const [eqAlpha, setEqAlpha] = useState("");
+  const [eqBeta, setEqBeta] = useState("");
+
+  const equationResult = useMemo(() => {
+    const alpha = eqAlpha ? parseFloat(eqAlpha) : Math.sqrt(Math.max(energy, 0.01) / (HBAR2_OVER_2M / mass));
+    const beta = energy < V0 ? Math.sqrt((V0 - energy) / (HBAR2_OVER_2M / mass)) : Math.sqrt((energy - V0) / (HBAR2_OVER_2M / mass));
+    const d = a + b;
+    const sinA = sinVal ? parseFloat(sinVal) : Math.sin(alpha * a);
+    const cosA = cosVal ? parseFloat(cosVal) : Math.cos(alpha * a);
+
+    let f: number;
+    if (energy < V0) {
+      const sinhBb = Math.sinh(beta * b);
+      const coshBb = Math.cosh(beta * b);
+      f = cosA * coshBb - ((alpha * alpha - beta * beta) / (2 * alpha * beta)) * sinA * sinhBb;
+    } else {
+      const sinBb = Math.sin(beta * b);
+      const cosBb = Math.cos(beta * b);
+      f = cosA * cosBb - ((alpha * alpha + beta * beta) / (2 * alpha * beta)) * sinA * sinBb;
+    }
+
+    const allowed = Math.abs(f) <= 1;
+    const kd = allowed ? Math.acos(Math.max(-1, Math.min(1, f))) : NaN;
+
+    return { alpha, beta, f, allowed, kd, d, sinA: sinVal ? parseFloat(sinVal) : sinA, cosA: cosVal ? parseFloat(cosVal) : cosA };
+  }, [sinVal, cosVal, eqAlpha, eqBeta, energy, V0, a, b, mass]);
+
   return (
     <div className="space-y-4">
       {/* Main Interactive Visualization */}
       <GlassCard className="p-5" id="kp-main-canvas">
         <KronigPenneyCanvas V0={V0} a={a} b={b} mass={mass} energy={energy} animating={animating} timeRef={timeRef} />
+      </GlassCard>
+
+      {/* Equation Input Box */}
+      <GlassCard className="p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Calculator size={14} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Kronig–Penney Equation Calculator</h3>
+            <p className="text-[10px] text-muted-foreground">Enter sin(αa) and cos(αa) values to evaluate the transcendental equation</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Input Section */}
+          <div className="space-y-3">
+            <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-3">
+              <p className="text-[11px] font-semibold text-foreground">Input Values</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-mono">sin(αa)</label>
+                  <Input
+                    type="number" step="0.001" placeholder={equationResult.sinA.toFixed(4)}
+                    value={sinVal} onChange={e => setSinVal(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-mono">cos(αa)</label>
+                  <Input
+                    type="number" step="0.001" placeholder={equationResult.cosA.toFixed(4)}
+                    value={cosVal} onChange={e => setCosVal(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-mono">α (Å⁻¹)</label>
+                  <Input
+                    type="number" step="0.01" placeholder={equationResult.alpha.toFixed(4)}
+                    value={eqAlpha} onChange={e => setEqAlpha(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-mono">β (Å⁻¹)</label>
+                  <Input
+                    type="number" step="0.01" placeholder={equationResult.beta.toFixed(4)}
+                    value={eqBeta} onChange={e => setEqBeta(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="w-full text-xs h-7" onClick={() => { setSinVal(""); setCosVal(""); setEqAlpha(""); setEqBeta(""); }}>
+                Reset to Auto-computed Values
+              </Button>
+            </div>
+          </div>
+
+          {/* Result Section */}
+          <div className="space-y-3">
+            <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-foreground">Transcendental Equation</p>
+              <div className="rounded-md bg-muted/30 p-2.5 border border-border/20">
+                <p className="text-[10px] font-mono text-center text-muted-foreground leading-relaxed">
+                  {energy < V0
+                    ? "cos(kd) = cos(αa)·cosh(βb) − [(α²−β²)/(2αβ)]·sin(αa)·sinh(βb)"
+                    : "cos(kd) = cos(αa)·cos(κb) − [(α²+κ²)/(2ακ)]·sin(αa)·sin(κb)"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="rounded-md bg-primary/5 border border-primary/20 p-2">
+                  <p className="text-[9px] text-muted-foreground">f(E) = RHS</p>
+                  <p className="text-sm font-bold font-mono text-primary">{equationResult.f.toFixed(6)}</p>
+                </div>
+                <div className={`rounded-md p-2 border ${equationResult.allowed ? "bg-emerald-500/5 border-emerald-500/20" : "bg-destructive/5 border-destructive/20"}`}>
+                  <p className="text-[9px] text-muted-foreground">|f(E)| ≤ 1?</p>
+                  <p className={`text-sm font-bold ${equationResult.allowed ? "text-emerald-400" : "text-destructive"}`}>
+                    {equationResult.allowed ? "✓ Allowed Band" : "✗ Forbidden Gap"}
+                  </p>
+                </div>
+              </div>
+
+              {equationResult.allowed && (
+                <div className="rounded-md bg-amber-500/5 border border-amber-500/20 p-2">
+                  <p className="text-[9px] text-muted-foreground">Bloch wavevector k</p>
+                  <p className="text-sm font-bold font-mono text-amber-400">
+                    k = {(equationResult.kd / equationResult.d).toFixed(4)} Å⁻¹
+                    <span className="text-[10px] text-muted-foreground ml-2">(kd = {equationResult.kd.toFixed(4)})</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-md bg-muted/20 border border-border/20 p-2">
+              <p className="text-[9px] text-muted-foreground mb-1">Auto-computed from current parameters:</p>
+              <div className="grid grid-cols-2 gap-x-4 text-[10px] font-mono text-muted-foreground">
+                <span>α = {equationResult.alpha.toFixed(4)} Å⁻¹</span>
+                <span>β = {equationResult.beta.toFixed(4)} Å⁻¹</span>
+                <span>sin(αa) = {Math.sin(equationResult.alpha * a).toFixed(4)}</span>
+                <span>cos(αa) = {Math.cos(equationResult.alpha * a).toFixed(4)}</span>
+                <span>d = {equationResult.d.toFixed(2)} Å</span>
+                <span>E = {energy.toFixed(2)} eV</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </GlassCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

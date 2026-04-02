@@ -44,7 +44,11 @@ const PhaseLegend = () => (
 const WavefunctionPlot = ({ data, ev, showPhase, time, lastMeasurement }: Props) => {
   const chartData = useMemo(() => {
     const step = Math.max(1, Math.floor(data.length / 200));
-    return data.filter((_, i) => i % step === 0);
+    return data.filter((_, i) => i % step === 0).map(p => ({
+      ...p,
+      psi_re: -p.psi_re,   // Flip sign: display Re(ψ) as positive
+      psi_im: -p.psi_im,   // Flip sign: display Im(ψ) as negative
+    }));
   }, [data]);
 
   return (
