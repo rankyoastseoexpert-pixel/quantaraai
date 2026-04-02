@@ -496,28 +496,48 @@ export default function KronigPenneySimulator() {
         <KronigPenneyCanvas V0={V0} a={a} b={b} mass={mass} energy={energy} animating={animating} timeRef={timeRef} />
       </GlassCard>
 
-      {/* Equation Input Box */}
+      {/* Equation Calculator */}
       <GlassCard className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
             <Calculator size={14} className="text-primary" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Kronig–Penney Equation Calculator</h3>
-            <p className="text-[10px] text-muted-foreground">Enter sin(αa) and cos(αa) values to evaluate the transcendental equation</p>
+            <h3 className="text-sm font-semibold text-foreground">Kronig–Penney Transcendental Equation</h3>
+            <p className="text-[10px] text-muted-foreground">Modify parameters and run to update the visualization</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Input Section */}
+        {/* Full Equation Display */}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-4">
+          <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
+            {energy < V0 ? "Below-Barrier (E < V₀) — Tunneling Regime" : "Above-Barrier (E > V₀) — Propagating Regime"}
+          </p>
+          <div className="text-center py-3">
+            <p className="text-base font-mono text-foreground leading-loose tracking-wide">
+              {energy < V0
+                ? "cos(kd) = cos(αa) · cosh(βb) − [(α² − β²) / (2αβ)] · sin(αa) · sinh(βb)"
+                : "cos(kd) = cos(αa) · cos(κb) − [(α² + κ²) / (2ακ)] · sin(αa) · sin(κb)"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 justify-center text-[11px] font-mono text-muted-foreground border-t border-border/30 pt-3 mt-2">
+            <span>α = √(2mE / ℏ²)</span>
+            <span>{energy < V0 ? "β = √(2m(V₀−E) / ℏ²)" : "κ = √(2m(E−V₀) / ℏ²)"}</span>
+            <span>d = a + b</span>
+            <span>Allowed bands: |f(E)| ≤ 1</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Input Values */}
           <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-foreground">Input Parameters</p>
             <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-3">
-              <p className="text-[11px] font-semibold text-foreground">Input Values</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">sin(αa)</label>
                   <Input
-                    type="number" step="0.001" placeholder={equationResult.sinA.toFixed(4)}
+                    type="number" step="0.001" placeholder={Math.sin(equationResult.alpha * a).toFixed(4)}
                     value={sinVal} onChange={e => setSinVal(e.target.value)}
                     className="h-8 text-xs font-mono"
                   />
@@ -525,7 +545,7 @@ export default function KronigPenneySimulator() {
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">cos(αa)</label>
                   <Input
-                    type="number" step="0.001" placeholder={equationResult.cosA.toFixed(4)}
+                    type="number" step="0.001" placeholder={Math.cos(equationResult.alpha * a).toFixed(4)}
                     value={cosVal} onChange={e => setCosVal(e.target.value)}
                     className="h-8 text-xs font-mono"
                   />
@@ -539,7 +559,7 @@ export default function KronigPenneySimulator() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground font-mono">β (Å⁻¹)</label>
+                  <label className="text-[10px] text-muted-foreground font-mono">{energy < V0 ? "β" : "κ"} (Å⁻¹)</label>
                   <Input
                     type="number" step="0.01" placeholder={equationResult.beta.toFixed(4)}
                     value={eqBeta} onChange={e => setEqBeta(e.target.value)}
@@ -547,39 +567,48 @@ export default function KronigPenneySimulator() {
                   />
                 </div>
               </div>
-              <Button size="sm" variant="outline" className="w-full text-xs h-7" onClick={() => { setSinVal(""); setCosVal(""); setEqAlpha(""); setEqBeta(""); }}>
-                Reset to Auto-computed Values
-              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs h-8"
+                  onClick={() => {
+                    // Apply custom values to the main visualization
+                    if (eqAlpha) {
+                      const customAlpha = parseFloat(eqAlpha);
+                      const newE = customAlpha * customAlpha * (HBAR2_OVER_2M / mass);
+                      if (newE > 0 && newE < V0 * 3) setEnergy(parseFloat(newE.toFixed(2)));
+                    }
+                  }}
+                >
+                  <Play size={11} /> Run Visualization
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs h-8 px-3" onClick={() => { setSinVal(""); setCosVal(""); setEqAlpha(""); setEqBeta(""); }}>
+                  Reset
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Result Section */}
+          {/* Computed Results */}
           <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-foreground">Evaluation Result</p>
             <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-2">
-              <p className="text-[11px] font-semibold text-foreground">Transcendental Equation</p>
-              <div className="rounded-md bg-muted/30 p-2.5 border border-border/20">
-                <p className="text-[10px] font-mono text-center text-muted-foreground leading-relaxed">
-                  {energy < V0
-                    ? "cos(kd) = cos(αa)·cosh(βb) − [(α²−β²)/(2αβ)]·sin(αa)·sinh(βb)"
-                    : "cos(kd) = cos(αa)·cos(κb) − [(α²+κ²)/(2ακ)]·sin(αa)·sin(κb)"}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="rounded-md bg-primary/5 border border-primary/20 p-2">
-                  <p className="text-[9px] text-muted-foreground">f(E) = RHS</p>
-                  <p className="text-sm font-bold font-mono text-primary">{equationResult.f.toFixed(6)}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md bg-primary/5 border border-primary/20 p-2.5">
+                  <p className="text-[9px] text-muted-foreground">f(E) = cos(kd)</p>
+                  <p className="text-lg font-bold font-mono text-primary">{equationResult.f.toFixed(6)}</p>
                 </div>
-                <div className={`rounded-md p-2 border ${equationResult.allowed ? "bg-emerald-500/5 border-emerald-500/20" : "bg-destructive/5 border-destructive/20"}`}>
-                  <p className="text-[9px] text-muted-foreground">|f(E)| ≤ 1?</p>
-                  <p className={`text-sm font-bold ${equationResult.allowed ? "text-emerald-400" : "text-destructive"}`}>
-                    {equationResult.allowed ? "✓ Allowed Band" : "✗ Forbidden Gap"}
+                <div className={`rounded-md p-2.5 border ${equationResult.allowed ? "bg-emerald-500/5 border-emerald-500/20" : "bg-destructive/5 border-destructive/20"}`}>
+                  <p className="text-[9px] text-muted-foreground">|f(E)| ≤ 1 ?</p>
+                  <p className={`text-lg font-bold ${equationResult.allowed ? "text-emerald-400" : "text-destructive"}`}>
+                    {equationResult.allowed ? "✓ Allowed" : "✗ Forbidden"}
                   </p>
                 </div>
               </div>
 
               {equationResult.allowed && (
-                <div className="rounded-md bg-amber-500/5 border border-amber-500/20 p-2">
+                <div className="rounded-md bg-amber-500/5 border border-amber-500/20 p-2.5">
                   <p className="text-[9px] text-muted-foreground">Bloch wavevector k</p>
                   <p className="text-sm font-bold font-mono text-amber-400">
                     k = {(equationResult.kd / equationResult.d).toFixed(4)} Å⁻¹
@@ -588,16 +617,20 @@ export default function KronigPenneySimulator() {
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="rounded-md bg-muted/20 border border-border/20 p-2">
-              <p className="text-[9px] text-muted-foreground mb-1">Auto-computed from current parameters:</p>
-              <div className="grid grid-cols-2 gap-x-4 text-[10px] font-mono text-muted-foreground">
-                <span>α = {equationResult.alpha.toFixed(4)} Å⁻¹</span>
-                <span>β = {equationResult.beta.toFixed(4)} Å⁻¹</span>
-                <span>sin(αa) = {Math.sin(equationResult.alpha * a).toFixed(4)}</span>
-                <span>cos(αa) = {Math.cos(equationResult.alpha * a).toFixed(4)}</span>
-                <span>d = {equationResult.d.toFixed(2)} Å</span>
-                <span>E = {energy.toFixed(2)} eV</span>
+          {/* Auto-computed Reference */}
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-foreground">Current System Values</p>
+            <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-2">
+              <div className="space-y-1.5 text-[11px] font-mono text-muted-foreground">
+                <div className="flex justify-between"><span>α</span><span className="text-foreground">{equationResult.alpha.toFixed(4)} Å⁻¹</span></div>
+                <div className="flex justify-between"><span>{energy < V0 ? "β" : "κ"}</span><span className="text-foreground">{equationResult.beta.toFixed(4)} Å⁻¹</span></div>
+                <div className="flex justify-between"><span>sin(αa)</span><span className="text-foreground">{Math.sin(equationResult.alpha * a).toFixed(4)}</span></div>
+                <div className="flex justify-between"><span>cos(αa)</span><span className="text-foreground">{Math.cos(equationResult.alpha * a).toFixed(4)}</span></div>
+                <div className="flex justify-between"><span>d = a + b</span><span className="text-foreground">{equationResult.d.toFixed(2)} Å</span></div>
+                <div className="flex justify-between"><span>E</span><span className="text-foreground">{energy.toFixed(2)} eV</span></div>
+                <div className="flex justify-between"><span>V₀</span><span className="text-foreground">{V0.toFixed(2)} eV</span></div>
               </div>
             </div>
           </div>
