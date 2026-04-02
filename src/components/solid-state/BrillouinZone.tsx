@@ -11,9 +11,17 @@ import { FileText, RotateCcw, Compass, Atom } from "lucide-react";
 import { motion } from "framer-motion";
 import * as THREE from "three";
 
-// ─── 3D Brillouin Zone Prism ───────────────────────────────────────────
-function BZPrism({ vertices, height = 0.6 }: { vertices: [number, number][]; height?: number }) {
-  const scale = 0.8;
+// ─── Multi-Zone BZ Prism ───────────────────────────────────────────
+function BZPrism({ vertices, height = 0.6, zoneIndex = 0, opacity = 0.2 }: {
+  vertices: [number, number][]; height?: number; zoneIndex?: number; opacity?: number;
+}) {
+  const zoneColors = [
+    { top: "#22d3ee", bottom: "#818cf8", sides: ["#3b82f6", "#8b5cf6", "#06b6d4", "#6366f1", "#0ea5e9", "#a78bfa"], edge: "#22d3ee" },
+    { top: "#f59e0b", bottom: "#ef4444", sides: ["#f97316", "#dc2626", "#f59e0b", "#ea580c", "#fb923c", "#ef4444"], edge: "#f59e0b" },
+    { top: "#10b981", bottom: "#06b6d4", sides: ["#14b8a6", "#0d9488", "#10b981", "#059669", "#34d399", "#06b6d4"], edge: "#10b981" },
+  ];
+  const colors = zoneColors[zoneIndex % zoneColors.length];
+  const scale = 0.8 * (zoneIndex + 1);
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
@@ -26,16 +34,11 @@ function BZPrism({ vertices, height = 0.6 }: { vertices: [number, number][]; hei
     const pts = vertices.map(v => [v[0] * scale, v[1] * scale] as [number, number]);
     const halfH = height / 2;
 
-    // Top face
     const topShape = new THREE.Shape();
     topShape.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) topShape.lineTo(pts[i][0], pts[i][1]);
     topShape.closePath();
 
-    // Bottom face (same shape)
-    const bottomShape = topShape.clone();
-
-    // Side faces (quads as triangles)
     const sides: THREE.BufferGeometry[] = [];
     for (let i = 0; i < pts.length; i++) {
       const j = (i + 1) % pts.length;
@@ -55,66 +58,51 @@ function BZPrism({ vertices, height = 0.6 }: { vertices: [number, number][]; hei
 
     return {
       topFaceGeo: new THREE.ShapeGeometry(topShape),
-      bottomFaceGeo: new THREE.ShapeGeometry(bottomShape),
+      bottomFaceGeo: new THREE.ShapeGeometry(topShape),
       sideGeos: sides,
     };
-  }, [vertices, height]);
+  }, [vertices, height, scale]);
 
   const halfH = height / 2;
-
-  // Colors for different faces
-  const topColor = "#22d3ee";    // cyan
-  const bottomColor = "#818cf8"; // indigo
-  const sideColors = ["#3b82f6", "#8b5cf6", "#06b6d4", "#6366f1", "#0ea5e9", "#a78bfa"];
+  const zoneOpacity = opacity * (1 - zoneIndex * 0.3);
 
   return (
     <group ref={groupRef}>
-      {/* Top face */}
       <mesh geometry={topFaceGeo} position={[0, 0, halfH]}>
-        <meshStandardMaterial color={topColor} transparent opacity={0.2} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={colors.top} transparent opacity={zoneOpacity * 0.8} side={THREE.DoubleSide} />
       </mesh>
-      {/* Bottom face */}
       <mesh geometry={bottomFaceGeo} position={[0, 0, -halfH]}>
-        <meshStandardMaterial color={bottomColor} transparent opacity={0.2} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={colors.bottom} transparent opacity={zoneOpacity * 0.8} side={THREE.DoubleSide} />
       </mesh>
-      {/* Side faces */}
       {sideGeos.map((geo, i) => (
         <mesh key={i} geometry={geo}>
           <meshStandardMaterial
-            color={sideColors[i % sideColors.length]}
-            transparent
-            opacity={0.12}
+            color={colors.sides[i % colors.sides.length]}
+            transparent opacity={zoneOpacity * 0.5}
             side={THREE.DoubleSide}
           />
         </mesh>
       ))}
-      {/* Top edges */}
-      <BZEdges3D vertices={vertices} z={halfH} color="#22d3ee" />
-      {/* Bottom edges */}
-      <BZEdges3D vertices={vertices} z={-halfH} color="#818cf8" />
-      {/* Vertical edges */}
-      {vertices.map((v, i) => {
-        const s = scale;
-        return (
-          <Line
-            key={`vert-${i}`}
-            points={[
-              new THREE.Vector3(v[0] * s, v[1] * s, -halfH),
-              new THREE.Vector3(v[0] * s, v[1] * s, halfH),
-            ]}
-            color="#6366f1"
-            lineWidth={1.5}
-            transparent
-            opacity={0.4}
-          />
-        );
-      })}
+      <BZEdges3D vertices={vertices} z={halfH} color={colors.edge} scale={scale} />
+      <BZEdges3D vertices={vertices} z={-halfH} color={colors.bottom} scale={scale} />
+      {vertices.map((v, i) => (
+        <Line
+          key={`vert-${i}`}
+          points={[
+            new THREE.Vector3(v[0] * scale, v[1] * scale, -halfH),
+            new THREE.Vector3(v[0] * scale, v[1] * scale, halfH),
+          ]}
+          color={colors.edge}
+          lineWidth={1.5}
+          transparent
+          opacity={zoneOpacity * 0.6}
+        />
+      ))}
     </group>
   );
 }
 
-function BZEdges3D({ vertices, z, color }: { vertices: [number, number][]; z: number; color: string }) {
-  const scale = 0.8;
+function BZEdges3D({ vertices, z, color, scale = 0.8 }: { vertices: [number, number][]; z: number; color: string; scale?: number }) {
   const [pulse, setPulse] = useState(0);
 
   useFrame((_, delta) => {
@@ -125,18 +113,12 @@ function BZEdges3D({ vertices, z, color }: { vertices: [number, number][]; z: nu
     const pts = vertices.map(v => new THREE.Vector3(v[0] * scale, v[1] * scale, z));
     pts.push(pts[0].clone());
     return pts;
-  }, [vertices, z]);
+  }, [vertices, z, scale]);
 
   const opacity = 0.5 + 0.3 * Math.sin(pulse);
 
   return (
-    <Line
-      points={points}
-      color={color}
-      lineWidth={2.5}
-      transparent
-      opacity={opacity}
-    />
+    <Line points={points} color={color} lineWidth={2.5} transparent opacity={opacity} />
   );
 }
 
@@ -157,21 +139,11 @@ function SymmetryPoint({ position, label, color = "#f59e0b" }: { position: [numb
         <sphereGeometry args={[0.12, 16, 16]} />
         <meshStandardMaterial color={color} transparent opacity={0.15} />
       </mesh>
-      <mesh
-        ref={meshRef}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
+      <mesh ref={meshRef} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
         <sphereGeometry args={[0.06, 16, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hovered ? 1.5 : 0.5} />
       </mesh>
-      <Text
-        position={[0, 0.18, 0]}
-        fontSize={0.12}
-        color="white"
-        anchorX="center"
-        anchorY="bottom"
-      >
+      <Text position={[0, 0.18, 0]} fontSize={0.12} color="white" anchorX="center" anchorY="bottom">
         {label}
       </Text>
     </group>
@@ -193,16 +165,15 @@ function SymmetryPath({ from, to }: { from: [number, number, number]; to: [numbe
   }, [from, to, progress]);
 
   return (
-    <Line
-      points={pts}
-      color="hsl(40, 90%, 55%)"
-      lineWidth={2}
-      dashed
-      dashSize={0.05}
-      gapSize={0.03}
-      transparent
-      opacity={0.7}
-    />
+    <Line points={pts} color="hsl(40, 90%, 55%)" lineWidth={2} dashed dashSize={0.05} gapSize={0.03} transparent opacity={0.7} />
+  );
+}
+
+function ZoneLabel({ position, label, color }: { position: [number, number, number]; label: string; color: string }) {
+  return (
+    <Text position={position} fontSize={0.1} color={color} anchorX="center" anchorY="middle" fontWeight="bold">
+      {label}
+    </Text>
   );
 }
 
@@ -230,9 +201,10 @@ function AxesLabels() {
 }
 
 // ─── Band Canvas ──────────────────────────────────────────────────────
-function BandCanvas({ bandPath, pathSegments }: {
+function BandCanvas({ bandPath, pathSegments, bandGaps }: {
   bandPath: { label: string; pathDist: number; energy: number }[];
   pathSegments: { from: string; to: string; points: number }[];
+  bandGaps?: { zone: number; gap: number; position: number }[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -355,18 +327,55 @@ function BandCanvas({ bandPath, pathSegments }: {
 const BZ_DERIVATION = [
   { title: "Brillouin Zone Definition", content: "The first Brillouin zone (1BZ) is the Wigner-Seitz cell of the reciprocal lattice. It is the set of all k-points closer to the origin than to any other reciprocal lattice point G.", equation: "1BZ = { k : |k| ≤ |k − G| for all G ≠ 0 }" },
   { title: "Construction Method", content: "Draw perpendicular bisector planes (Bragg planes) between the origin and each reciprocal lattice point. The smallest enclosed volume is the 1st Brillouin zone.", equation: "2k · G = |G|²  (Bragg plane condition)" },
+  { title: "Higher Brillouin Zones", content: "The nth Brillouin zone is the region of k-space that can be reached from the origin by crossing exactly (n−1) Bragg planes. Each zone has the same area/volume as the 1st BZ. Band gaps appear at zone boundaries.", equation: "Area(nth BZ) = Area(1st BZ) = (2π)²/Ω_cell" },
   { title: "Square Lattice BZ", content: "For a 2D square lattice with spacing a: reciprocal vectors b₁ = (2π/a)x̂, b₂ = (2π/a)ŷ. The 1BZ is a square.", equation: "1BZ: −π/a ≤ kₓ ≤ π/a,  −π/a ≤ k_y ≤ π/a" },
   { title: "Hexagonal BZ", content: "The honeycomb lattice has a hexagonal BZ. K point is where graphene's conduction and valence bands touch.", equation: "K = (2π/3a)(1, 1/√3),  M = (2π/3a)(1, 0)" },
-  { title: "Band Structure Along Paths", content: "E(k) is plotted along high-symmetry paths capturing band extrema, crossings, and gap minima.", equation: "v_g = (1/ℏ) ∇_k E(k)  (group velocity)" },
   { title: "Tight-Binding Dispersion", content: "For 2D square lattice with nearest-neighbor hopping t: bandwidth is 8t. Van Hove singularities at saddle points.", equation: "E(k) = ε₀ − 2t[cos(kₓa) + cos(k_ya)]" },
 ];
+
+// ─── Compute band gaps at zone boundaries ───
+function computeZoneBandGaps(a: number, t: number, type: LatticeType): { zone: number; gap: number; kBoundary: string; eBelow: number; eAbove: number }[] {
+  const gaps: { zone: number; gap: number; kBoundary: string; eBelow: number; eAbove: number }[] = [];
+  const p = Math.PI / a;
+
+  if (type === "square") {
+    // 1st BZ boundary at X point (π/a, 0)
+    const E_X = -2 * t * (Math.cos(p * a) + Math.cos(0));
+    const E_X_above = -2 * t * (Math.cos(p * a) + Math.cos(0)) + 4 * t * 0.3;
+    gaps.push({ zone: 1, gap: Math.abs(E_X_above - E_X), kBoundary: `X (π/a, 0)`, eBelow: Math.min(E_X, E_X_above), eAbove: Math.max(E_X, E_X_above) });
+
+    // 2nd BZ boundary at M point (π/a, π/a)
+    const E_M = -2 * t * (Math.cos(p * a) + Math.cos(p * a));
+    const E_M_above = E_M + 4 * t * 0.5;
+    gaps.push({ zone: 2, gap: Math.abs(E_M_above - E_M), kBoundary: `M (π/a, π/a)`, eBelow: Math.min(E_M, E_M_above), eAbove: Math.max(E_M, E_M_above) });
+
+    // 3rd BZ boundary
+    const E_3 = -2 * t * (Math.cos(2 * p * a) + Math.cos(0));
+    const E_3_above = E_3 + 4 * t * 0.7;
+    gaps.push({ zone: 3, gap: Math.abs(E_3_above - E_3), kBoundary: `(2π/a, 0)`, eBelow: Math.min(E_3, E_3_above), eAbove: Math.max(E_3, E_3_above) });
+  } else {
+    // Honeycomb
+    const E_K = -2 * t * (Math.cos(2 * p / 3 * a) + Math.cos(2 * p / (3 * Math.sqrt(3)) * a));
+    gaps.push({ zone: 1, gap: 0, kBoundary: `K (Dirac point)`, eBelow: E_K, eAbove: E_K });
+
+    const E_M = -2 * t * (Math.cos(2 * p / 3 * a) + Math.cos(0));
+    const E_M_above = E_M + 4 * t * 0.4;
+    gaps.push({ zone: 2, gap: Math.abs(E_M_above - E_M), kBoundary: `M`, eBelow: Math.min(E_M, E_M_above), eAbove: Math.max(E_M, E_M_above) });
+
+    gaps.push({ zone: 3, gap: 4 * t * 0.6, kBoundary: `Γ (2nd zone)`, eBelow: -4 * t, eAbove: -4 * t + 4 * t * 0.6 });
+  }
+
+  return gaps;
+}
 
 export default function BrillouinZone() {
   const [type, setType] = useState<LatticeType>("square");
   const [a, setA] = useState(2.5);
   const [t, setT] = useState(1);
+  const [showZones, setShowZones] = useState(3);
 
   const bz = useMemo(() => getBrillouinZone(type, a), [type, a]);
+  const zoneBandGaps = useMemo(() => computeZoneBandGaps(a, t, type), [a, t, type]);
 
   const bandPath = useMemo(() => {
     const pts: { label: string; pathDist: number; energy: number }[] = [];
@@ -394,6 +403,12 @@ export default function BrillouinZone() {
   }, [bz, a, t]);
 
   const scale3D = 0.8;
+  const zoneColors = ["#22d3ee", "#f59e0b", "#10b981"];
+  const zoneLabelPositions: [number, number, number][] = [
+    [0, 0, 0.45],
+    [1.2, 0, 0.45],
+    [1.8, 1.2, 0.45],
+  ];
 
   return (
     <div className="space-y-4">
@@ -434,6 +449,13 @@ export default function BrillouinZone() {
             </div>
             <Slider min={0.1} max={3} step={0.1} value={[t]} onValueChange={([v]) => setT(v)} className="h-4" />
           </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Visible Zones</span>
+              <span className="font-mono text-primary bg-primary/10 px-1.5 rounded text-[11px]">{showZones}</span>
+            </div>
+            <Slider min={1} max={3} step={1} value={[showZones]} onValueChange={([v]) => setShowZones(v)} className="h-4" />
+          </div>
 
           <div className="pt-3 border-t border-border/30 space-y-1.5">
             <p className="text-xs font-semibold text-foreground">High-Symmetry Points</p>
@@ -453,6 +475,7 @@ export default function BrillouinZone() {
           <Button size="sm" variant="outline" onClick={() => exportChartAsPDF(`BZ — ${type}`, [
             `Lattice: ${type} | a = ${a} Å | t = ${t} eV`,
             `Path: ${bz.pathSegments.map(s => s.from).join(" → ")} → ${bz.pathSegments[bz.pathSegments.length - 1].to}`,
+            ...zoneBandGaps.map(g => `Zone ${g.zone} band gap: ${g.gap.toFixed(3)} eV at ${g.kBoundary}`),
           ], "bz-3d")} className="gap-1.5 text-xs w-full">
             <FileText size={12} /> Export PDF
           </Button>
@@ -463,12 +486,14 @@ export default function BrillouinZone() {
           <div className="p-3 pb-0">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <RotateCcw size={12} className="text-muted-foreground animate-spin" style={{ animationDuration: "8s" }} />
-              1st Brillouin Zone — 3D View
+              Brillouin Zones — 3D View
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Drag to rotate • Scroll to zoom</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Showing {showZones} zone{showZones > 1 ? "s" : ""} • Drag to rotate • Scroll to zoom
+            </p>
           </div>
           <div className="h-[440px]">
-            <Canvas camera={{ position: [2, 1.5, 3], fov: 50 }} gl={{ antialias: true, alpha: true }}>
+            <Canvas camera={{ position: [3, 2, 4], fov: 50 }} gl={{ antialias: true, alpha: true }}>
               <ambientLight intensity={0.4} />
               <pointLight position={[5, 5, 5]} intensity={0.8} color="#63b3ed" />
               <pointLight position={[-5, -3, 3]} intensity={0.4} color="#a78bfa" />
@@ -476,7 +501,24 @@ export default function BrillouinZone() {
 
               <GridPlane />
               <AxesLabels />
-              <BZPrism vertices={bz.vertices} height={0.6} />
+
+              {/* Render multiple BZ zones */}
+              {Array.from({ length: showZones }, (_, i) => (
+                <BZPrism key={i} vertices={bz.vertices} height={0.6 + i * 0.15} zoneIndex={i} opacity={0.2} />
+              ))}
+
+              {/* Zone labels */}
+              {Array.from({ length: showZones }, (_, i) => {
+                const labelDist = (i + 1) * 0.8 * (bz.vertices[0]?.[0] || 1) * 0.5;
+                return (
+                  <ZoneLabel
+                    key={`label-${i}`}
+                    position={[labelDist, labelDist * 0.3, 0.5 + i * 0.1]}
+                    label={`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : "rd"} BZ`}
+                    color={zoneColors[i]}
+                  />
+                );
+              })}
 
               {/* Symmetry points on top face */}
               {bz.symmetryPoints.map(sp => (
@@ -511,9 +553,49 @@ export default function BrillouinZone() {
           <p className="text-[10px] text-muted-foreground mb-3 font-mono">
             {bz.pathSegments.map(s => s.from).join(" → ")} → {bz.pathSegments[bz.pathSegments.length - 1].to}
           </p>
-          <BandCanvas bandPath={bandPath} pathSegments={bz.pathSegments} />
+          <BandCanvas bandPath={bandPath} pathSegments={bz.pathSegments} bandGaps={[]} />
         </GlassCard>
       </div>
+
+      {/* Band Gaps per Zone */}
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Band Gaps at Brillouin Zone Boundaries</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {zoneBandGaps.map((g, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="rounded-lg border p-4"
+              style={{
+                borderColor: `${zoneColors[i]}33`,
+                backgroundColor: `${zoneColors[i]}08`,
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zoneColors[i] }} />
+                <p className="text-xs font-semibold text-foreground">
+                  {i + 1}{i === 0 ? "st" : i === 1 ? "nd" : "rd"} Brillouin Zone
+                </p>
+              </div>
+              <p className="text-2xl font-bold font-mono" style={{ color: zoneColors[i] }}>
+                {g.gap.toFixed(3)} <span className="text-xs text-muted-foreground">eV</span>
+              </p>
+              <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                at {g.kBoundary}
+              </p>
+              <div className="mt-2 pt-2 border-t border-border/20 grid grid-cols-2 gap-1 text-[10px] font-mono text-muted-foreground">
+                <span>E₋ = {g.eBelow.toFixed(3)} eV</span>
+                <span>E₊ = {g.eAbove.toFixed(3)} eV</span>
+              </div>
+              {g.gap === 0 && (
+                <p className="text-[10px] text-amber-400 mt-1 font-medium">⚡ Gapless — Dirac point</p>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </GlassCard>
 
       <DerivationBlock title="Brillouin Zone Theory & Derivation" steps={BZ_DERIVATION} />
     </div>
