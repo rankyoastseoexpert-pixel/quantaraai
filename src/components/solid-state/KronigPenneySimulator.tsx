@@ -637,6 +637,119 @@ export default function KronigPenneySimulator() {
         </div>
       </GlassCard>
 
+      {/* Step-by-Step Worked Examples */}
+      <GlassCard className="p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+            <Calculator size={14} className="text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Worked Example: Finding Allowed Bands</h3>
+            <p className="text-[10px] text-muted-foreground">Step-by-step solution at specific k-points using current parameters</p>
+          </div>
+        </div>
+
+        {(() => {
+          const d = a + b;
+          const alpha = Math.sqrt(Math.max(energy, 0.01) / (HBAR2_OVER_2M / mass));
+          const beta_val = energy < V0 ? Math.sqrt((V0 - energy) / (HBAR2_OVER_2M / mass)) : Math.sqrt((energy - V0) / (HBAR2_OVER_2M / mass));
+          const sinAa = Math.sin(alpha * a);
+          const cosAa = Math.cos(alpha * a);
+          let fE: number;
+          if (energy < V0) {
+            fE = cosAa * Math.cosh(beta_val * b) - ((alpha ** 2 - beta_val ** 2) / (2 * alpha * beta_val)) * sinAa * Math.sinh(beta_val * b);
+          } else {
+            fE = cosAa * Math.cos(beta_val * b) - ((alpha ** 2 + beta_val ** 2) / (2 * alpha * beta_val)) * sinAa * Math.sin(beta_val * b);
+          }
+          const allowed = Math.abs(fE) <= 1;
+          const kVal = allowed ? Math.acos(Math.max(-1, Math.min(1, fE))) / d : NaN;
+
+          const steps = [
+            {
+              title: "Step 1 — Compute wave parameters",
+              content: `Given E = ${energy.toFixed(2)} eV, V₀ = ${V0.toFixed(2)} eV, m* = ${mass} mₑ, a = ${a} Å, b = ${b} Å`,
+              math: `α = √(2m*E / ℏ²) = √(${energy.toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${alpha.toFixed(4)} Å⁻¹`,
+            },
+            {
+              title: `Step 2 — Compute ${energy < V0 ? "decay" : "propagation"} constant`,
+              content: energy < V0 ? `Since E < V₀, we're in the tunneling regime` : `Since E > V₀, we're in the propagating regime`,
+              math: energy < V0
+                ? `β = √(2m*(V₀−E) / ℏ²) = √(${(V0 - energy).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹`
+                : `κ = √(2m*(E−V₀) / ℏ²) = √(${(energy - V0).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹`,
+            },
+            {
+              title: "Step 3 — Evaluate trigonometric / hyperbolic terms",
+              content: "Plug α and " + (energy < V0 ? "β" : "κ") + " into the equation components",
+              math: energy < V0
+                ? `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsinh(βb) = sinh(${(beta_val * b).toFixed(3)}) = ${Math.sinh(beta_val * b).toFixed(6)}\ncosh(βb) = cosh(${(beta_val * b).toFixed(3)}) = ${Math.cosh(beta_val * b).toFixed(6)}`
+                : `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsin(κb) = sin(${(beta_val * b).toFixed(3)}) = ${Math.sin(beta_val * b).toFixed(6)}\ncos(κb) = cos(${(beta_val * b).toFixed(3)}) = ${Math.cos(beta_val * b).toFixed(6)}`,
+            },
+            {
+              title: "Step 4 — Compute the prefactor",
+              content: "The coupling term between well and barrier wave parameters",
+              math: energy < V0
+                ? `(α² − β²) / (2αβ) = (${(alpha ** 2).toFixed(4)} − ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 - beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}`
+                : `(α² + κ²) / (2ακ) = (${(alpha ** 2).toFixed(4)} + ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 + beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}`,
+            },
+            {
+              title: "Step 5 — Evaluate f(E) = cos(kd)",
+              content: "Combine all terms to get the transcendental equation value",
+              math: `f(E) = ${fE.toFixed(6)}    →    |f(E)| = ${Math.abs(fE).toFixed(6)}`,
+            },
+            {
+              title: "Step 6 — Band determination",
+              content: allowed
+                ? `Since |f(E)| ≤ 1, this energy lies in an ALLOWED band. We can solve for k.`
+                : `Since |f(E)| > 1, this energy lies in a FORBIDDEN gap. No propagating Bloch states exist.`,
+              math: allowed
+                ? `k = arccos(f(E)) / d = arccos(${fE.toFixed(4)}) / ${d.toFixed(2)} = ${kVal!.toFixed(6)} Å⁻¹`
+                : `cos(kd) = ${fE.toFixed(4)} → No real k exists (band gap)`,
+            },
+          ];
+
+          return (
+            <div className="space-y-2">
+              {steps.map((s, i) => (
+                <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                  className="rounded-lg border border-border/30 bg-background/50 p-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-[9px] font-bold text-primary">{i + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground">{s.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{s.content}</p>
+                      <pre className="text-[11px] font-mono text-primary/90 bg-primary/5 rounded-md p-2 mt-1.5 whitespace-pre-wrap overflow-x-auto">{s.math}</pre>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Final verdict */}
+              <div className={`rounded-xl p-4 border-2 mt-3 ${allowed ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+                <p className={`text-sm font-bold ${allowed ? "text-emerald-400" : "text-destructive"}`}>
+                  {allowed ? "✓ E = " + energy.toFixed(2) + " eV is in an ALLOWED band" : "✗ E = " + energy.toFixed(2) + " eV is in a FORBIDDEN gap"}
+                </p>
+                {allowed && (
+                  <p className="text-xs font-mono text-muted-foreground mt-1">
+                    Bloch wavevector: k = {kVal!.toFixed(6)} Å⁻¹ (within 1st BZ: [−{(Math.PI / d).toFixed(3)}, {(Math.PI / d).toFixed(3)}])
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </GlassCard>
+
+      {/* Interactive f(E) vs E Plot */}
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-1">f(E) vs E — Band Structure Map</h3>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Allowed bands exist where |f(E)| ≤ 1 (shaded green). Forbidden gaps where |f(E)| &gt; 1 (shaded red). Current energy E = {energy.toFixed(2)} eV marked.
+        </p>
+        <FofEPlot V0={V0} a={a} b={b} mass={mass} energy={energy} />
+      </GlassCard>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Controls */}
         <GlassCard className="p-5 space-y-4">
