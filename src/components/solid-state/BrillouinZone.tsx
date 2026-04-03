@@ -4,10 +4,12 @@ import { OrbitControls, Text, Line } from "@react-three/drei";
 import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getBrillouinZone, type LatticeType } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
+import { MATERIALS_DB } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
-import { FileText, RotateCcw, Compass, Atom, BarChart3 } from "lucide-react";
+import { FileText, RotateCcw, Compass, Atom, BarChart3, Database, Beaker } from "lucide-react";
 import { motion } from "framer-motion";
 import * as THREE from "three";
 
