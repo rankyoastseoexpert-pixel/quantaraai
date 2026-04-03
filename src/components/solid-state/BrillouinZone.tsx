@@ -375,6 +375,19 @@ export default function BrillouinZone() {
   const [a, setA] = useState(2.5);
   const [t, setT] = useState(1);
   const [showZones, setShowZones] = useState(3);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
+
+  const activeMaterial = MATERIALS_DB.find(m => m.key === selectedMaterial);
+
+  const handleMaterialSelect = (key: string) => {
+    setSelectedMaterial(key);
+    if (key === "" || key === "custom") return;
+    const mat = MATERIALS_DB.find(m => m.key === key);
+    if (!mat) return;
+    setA(mat.latticeConstant);
+    if (mat.latticeType === "honeycomb") setType("honeycomb");
+    else setType("square");
+  };
 
   const bz = useMemo(() => getBrillouinZone(type, a), [type, a]);
   const zoneBandGaps = useMemo(() => computeZoneBandGaps(a, t, type), [a, t, type]);
