@@ -763,6 +763,47 @@ export default function BrillouinZone() {
             </table>
           </div>
         </div>
+
+        {/* Material comparison when selected */}
+        {activeMaterial && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 rounded-xl border-2 p-4"
+            style={{ borderColor: `${activeMaterial.color}30`, backgroundColor: `${activeMaterial.color}05` }}
+          >
+            <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Beaker size={13} className="text-primary" />
+              {activeMaterial.icon} {activeMaterial.name} — Experimental vs Simulated Band Gaps
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Experimental Band Gap</p>
+                <p className="text-xl font-black font-mono mt-1" style={{ color: activeMaterial.color }}>
+                  {activeMaterial.bandGap.toFixed(3)} eV
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{activeMaterial.bandGapType} gap</p>
+              </div>
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Lattice Constant</p>
+                <p className="text-xl font-black font-mono mt-1 text-primary">
+                  {activeMaterial.latticeConstant.toFixed(3)} Å
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{activeMaterial.latticeType}</p>
+              </div>
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Simulated 1st BZ Gap</p>
+                <p className="text-xl font-black font-mono mt-1 text-foreground">
+                  {zoneBandGaps[0]?.gap.toFixed(3) || "—"} eV
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">tight-binding model</p>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-3 leading-relaxed">
+              {activeMaterial.description}
+            </p>
+          </motion.div>
+        )}
       </GlassCard>
 
       <DerivationBlock title="Brillouin Zone Theory & Derivation" steps={BZ_DERIVATION} />
