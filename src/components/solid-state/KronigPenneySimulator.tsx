@@ -422,6 +422,208 @@ function drawDimArrow(ctx: CanvasRenderingContext2D, x1: number, x2: number, y: 
   ctx.fillText(label, (x1 + x2) / 2, y + 14);
 }
 
+// ─── f(E) vs E Plot ─────────────────────────────────────────────────────
+function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number; mass: number; energy: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = Math.max(window.devicePixelRatio, 2);
+    const W = container.clientWidth;
+    const H = 340;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { top: 35, right: 40, bottom: 50, left: 65 };
+    const pw = W - pad.left - pad.right;
+    const ph = H - pad.top - pad.bottom;
+    const Emax = V0 * 2.5;
+    const numPts = 600;
+    const fRange = 4; // show f from -fRange to +fRange
+
+    const toX = (E: number) => pad.left + (E / Emax) * pw;
+    const toY = (f: number) => pad.top + ph / 2 - (f / fRange) * (ph / 2);
+
+    // Background
+    ctx.fillStyle = "rgba(10,15,30,0.3)";
+    ctx.fillRect(pad.left, pad.top, pw, ph);
+
+    // Allowed band region (-1 to 1)
+    const y1 = toY(1), y2 = toY(-1);
+    const bandGrad = ctx.createLinearGradient(0, y1, 0, y2);
+    bandGrad.addColorStop(0, "rgba(34,197,94,0.12)");
+    bandGrad.addColorStop(0.5, "rgba(34,197,94,0.06)");
+    bandGrad.addColorStop(1, "rgba(34,197,94,0.12)");
+    ctx.fillStyle = bandGrad;
+    ctx.fillRect(pad.left, y1, pw, y2 - y1);
+
+    // +1 and -1 lines
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(34,197,94,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, y1); ctx.lineTo(pad.left + pw, y1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.left, y2); ctx.lineTo(pad.left + pw, y2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels for ±1
+    ctx.fillStyle = "rgba(34,197,94,0.8)";
+    ctx.font = "bold 10px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("+1", pad.left - 8, y1 + 4);
+    ctx.fillText("−1", pad.left - 8, y2 + 4);
+    ctx.fillText("ALLOWED", pad.left + 50, (y1 + y2) / 2 + 3);
+
+    // Zero line
+    ctx.strokeStyle = "rgba(150,175,210,0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.left, toY(0)); ctx.lineTo(pad.left + pw, toY(0)); ctx.stroke();
+
+    // Compute f(E) curve
+    const points: { E: number; f: number }[] = [];
+    for (let i = 0; i < numPts; i++) {
+      const E = (i / numPts) * Emax + 0.01;
+      const alpha = Math.sqrt(E / (HBAR2_OVER_2M / mass));
+      let f: number;
+      if (E < V0) {
+        const beta = Math.sqrt((V0 - E) / (HBAR2_OVER_2M / mass));
+        f = Math.cos(alpha * a) * Math.cosh(beta * b) - ((alpha ** 2 - beta ** 2) / (2 * alpha * beta)) * Math.sin(alpha * a) * Math.sinh(beta * b);
+      } else {
+        const kappa = Math.sqrt((E - V0) / (HBAR2_OVER_2M / mass));
+        if (kappa < 0.001) { f = Math.cos(alpha * a); }
+        else { f = Math.cos(alpha * a) * Math.cos(kappa * b) - ((alpha ** 2 + kappa ** 2) / (2 * alpha * kappa)) * Math.sin(alpha * a) * Math.sin(kappa * b); }
+      }
+      points.push({ E, f: Math.max(-fRange, Math.min(fRange, f)) });
+    }
+
+    // Color the curve by allowed/forbidden
+    for (let i = 1; i < points.length; i++) {
+      const p0 = points[i - 1], p1 = points[i];
+      const inBand = Math.abs(p0.f) <= 1 && Math.abs(p1.f) <= 1;
+      ctx.strokeStyle = inBand ? "rgba(34,197,94,0.9)" : "rgba(239,68,68,0.7)";
+      ctx.lineWidth = inBand ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(p0.E), toY(p0.f));
+      ctx.lineTo(toX(p1.E), toY(p1.f));
+      ctx.stroke();
+    }
+
+    // Shade allowed E ranges at bottom
+    let inBand = false;
+    let bandStart = 0;
+    let bandNum = 1;
+    for (let i = 0; i < points.length; i++) {
+      const isAllowed = Math.abs(points[i].f) <= 1;
+      if (isAllowed && !inBand) { bandStart = points[i].E; inBand = true; }
+      if (!isAllowed && inBand) {
+        // Draw band marker
+        const x1 = toX(bandStart), x2 = toX(points[i - 1].E);
+        ctx.fillStyle = "rgba(34,197,94,0.15)";
+        ctx.fillRect(x1, pad.top, x2 - x1, ph);
+        // Band label at top
+        ctx.fillStyle = "rgba(34,197,94,0.7)";
+        ctx.font = "bold 9px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`Band ${bandNum}`, (x1 + x2) / 2, pad.top + 12);
+        ctx.font = "8px 'JetBrains Mono', monospace";
+        ctx.fillStyle = "rgba(34,197,94,0.5)";
+        ctx.fillText(`${bandStart.toFixed(1)}–${points[i - 1].E.toFixed(1)} eV`, (x1 + x2) / 2, pad.top + 22);
+        bandNum++;
+        inBand = false;
+      }
+    }
+    if (inBand) {
+      const x1 = toX(bandStart), x2 = toX(points[points.length - 1].E);
+      ctx.fillStyle = "rgba(34,197,94,0.15)";
+      ctx.fillRect(x1, pad.top, x2 - x1, ph);
+      ctx.fillStyle = "rgba(34,197,94,0.7)";
+      ctx.font = "bold 9px 'JetBrains Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`Band ${bandNum}`, (x1 + x2) / 2, pad.top + 12);
+    }
+
+    // V0 line
+    ctx.setLineDash([5, 3]);
+    ctx.strokeStyle = "rgba(255,180,50,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(toX(V0), pad.top); ctx.lineTo(toX(V0), pad.top + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,180,50,0.7)";
+    ctx.font = "9px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`V₀=${V0}`, toX(V0), pad.top + ph + 12);
+
+    // Current energy marker
+    const eX = toX(energy);
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(50,255,150,0.8)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(eX, pad.top); ctx.lineTo(eX, pad.top + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    // Dot on curve
+    const nearIdx = Math.round((energy / Emax) * numPts);
+    if (nearIdx >= 0 && nearIdx < points.length) {
+      const py = toY(points[nearIdx].f);
+      ctx.beginPath(); ctx.arc(eX, py, 5, 0, Math.PI * 2); ctx.fillStyle = "rgba(50,255,150,0.9)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(eX, py, 8, 0, Math.PI * 2); ctx.strokeStyle = "rgba(50,255,150,0.3)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "rgba(50,255,150,0.9)";
+      ctx.font = "bold 10px 'JetBrains Mono', monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`E=${energy.toFixed(1)}, f=${points[nearIdx].f.toFixed(3)}`, eX + 12, py - 4);
+    }
+
+    // Axes
+    ctx.strokeStyle = "rgba(150,175,210,0.5)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ph); ctx.lineTo(pad.left + pw, pad.top + ph); ctx.stroke();
+
+    // X axis ticks
+    ctx.fillStyle = "rgba(170,190,220,0.7)";
+    ctx.font = "9px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    for (let e = 0; e <= Emax; e += Math.ceil(Emax / 8)) {
+      ctx.fillText(e.toFixed(0), toX(e), pad.top + ph + 14);
+    }
+
+    // Labels
+    ctx.fillStyle = "rgba(170,190,220,0.8)";
+    ctx.font = "italic 12px 'Georgia', serif";
+    ctx.textAlign = "center";
+    ctx.fillText("E (eV)", pad.left + pw / 2, H - 6);
+    ctx.save();
+    ctx.translate(14, pad.top + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("f(E) = cos(kd)", 0, 0);
+    ctx.restore();
+
+    // Title
+    ctx.fillStyle = "rgba(230,240,255,0.9)";
+    ctx.font = "bold 13px 'Inter', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("f(E) vs Energy — Allowed Band Map", pad.left, 20);
+  }, [V0, a, b, mass, energy]);
+
+  useEffect(() => {
+    draw();
+    window.addEventListener("resize", draw);
+    return () => window.removeEventListener("resize", draw);
+  }, [draw]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <canvas ref={canvasRef} className="w-full rounded-lg" />
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────
 export default function KronigPenneySimulator() {
   const [V0, setV0] = useState(5);

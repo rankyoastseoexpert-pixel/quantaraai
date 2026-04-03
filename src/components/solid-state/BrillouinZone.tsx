@@ -557,43 +557,153 @@ export default function BrillouinZone() {
         </GlassCard>
       </div>
 
-      {/* Band Gaps per Zone */}
+      {/* Band Gaps per Zone — Enhanced */}
       <GlassCard className="p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Band Gaps at Brillouin Zone Boundaries</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {zoneBandGaps.map((g, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="rounded-lg border p-4"
-              style={{
-                borderColor: `${zoneColors[i]}33`,
-                backgroundColor: `${zoneColors[i]}08`,
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zoneColors[i] }} />
-                <p className="text-xs font-semibold text-foreground">
-                  {i + 1}{i === 0 ? "st" : i === 1 ? "nd" : "rd"} Brillouin Zone
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+            <BarChart3 size={14} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Band Gaps at Brillouin Zone Boundaries</h3>
+            <p className="text-[10px] text-muted-foreground">Energy gaps arise from Bragg reflection at zone edges — electrons cannot propagate at these energies</p>
+          </div>
+        </div>
+
+        {/* How to read this section */}
+        <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 my-4">
+          <p className="text-[11px] font-semibold text-foreground mb-2">📖 How to Interpret Band Gaps</p>
+          <ul className="text-[10px] text-muted-foreground space-y-1.5 list-disc list-inside">
+            <li><strong>Band Gap (Eₘ)</strong> — The energy range where no electron states exist. Larger gaps → stronger insulator.</li>
+            <li><strong>k-boundary</strong> — The reciprocal space point where Bragg reflection causes the gap. At k = nπ/a, incoming and reflected waves destructively interfere.</li>
+            <li><strong>E₋ / E₊</strong> — Lower and upper band edges. E₋ is the top of the valence band, E₊ is the bottom of the conduction band.</li>
+            <li><strong>Gap = 0</strong> means gapless (e.g., graphene's Dirac point) — the material is a semimetal or conductor.</li>
+          </ul>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {zoneBandGaps.map((g, i) => {
+            const ordinal = i === 0 ? "1st" : i === 1 ? "2nd" : "3rd";
+            const zoneColor = zoneColors[i];
+            const gapPercent = g.gap > 0 ? Math.min((g.gap / (4 * t)) * 100, 100) : 0;
+            const classification = g.gap === 0 ? "Gapless (Semimetal)" : g.gap < 0.5 * t ? "Narrow Gap" : g.gap < 1.5 * t ? "Moderate Gap" : "Wide Gap (Insulator)";
+
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.12 }}
+                className="rounded-xl border-2 p-4 space-y-3"
+                style={{ borderColor: `${zoneColor}40`, backgroundColor: `${zoneColor}08` }}
+              >
+                {/* Zone header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full shadow-lg" style={{ backgroundColor: zoneColor, boxShadow: `0 0 12px ${zoneColor}60` }} />
+                    <p className="text-sm font-bold text-foreground">{ordinal} Brillouin Zone</p>
+                  </div>
+                  {g.gap === 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold">DIRAC</span>}
+                </div>
+
+                {/* Gap value */}
+                <div className="text-center py-2">
+                  <p className="text-3xl font-black font-mono tracking-tight" style={{ color: zoneColor }}>
+                    {g.gap.toFixed(4)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">eV</p>
+                </div>
+
+                {/* Visual gap bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                    <span>Gap strength</span>
+                    <span>{classification}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-background/50 border border-border/30 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${gapPercent}%` }}
+                      transition={{ delay: i * 0.12 + 0.3, duration: 0.6 }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: zoneColor }}
+                    />
+                  </div>
+                </div>
+
+                {/* k-point */}
+                <div className="rounded-lg bg-background/50 border border-border/20 p-2.5">
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Boundary k-point</p>
+                  <p className="text-xs font-mono font-bold text-foreground">{g.kBoundary}</p>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Bragg condition: 2k · G = |G|² satisfied here
+                  </p>
+                </div>
+
+                {/* Energy edges */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-background/50 border border-border/20 p-2 text-center">
+                    <p className="text-[8px] text-muted-foreground uppercase">Valence Edge</p>
+                    <p className="text-sm font-bold font-mono text-foreground">{g.eBelow.toFixed(4)}</p>
+                    <p className="text-[8px] text-muted-foreground">eV (E₋)</p>
+                  </div>
+                  <div className="rounded-lg bg-background/50 border border-border/20 p-2 text-center">
+                    <p className="text-[8px] text-muted-foreground uppercase">Conduction Edge</p>
+                    <p className="text-sm font-bold font-mono text-foreground">{g.eAbove.toFixed(4)}</p>
+                    <p className="text-[8px] text-muted-foreground">eV (E₊)</p>
+                  </div>
+                </div>
+
+                {/* Physics note */}
+                <p className="text-[9px] text-muted-foreground leading-relaxed border-t border-border/20 pt-2">
+                  {i === 0
+                    ? "At the 1st BZ boundary (k = π/a), the nearly-free electron model gives Eₘ ≈ 2|V_G|, where V_G is the Fourier coefficient of the lattice potential."
+                    : i === 1
+                    ? "The 2nd zone boundary involves higher-order Bragg reflections. Gap typically widens due to stronger scattering at corner points (M)."
+                    : "3rd zone gaps are often smaller due to weaker high-order Fourier components. In real materials, bands may overlap here."}
                 </p>
-              </div>
-              <p className="text-2xl font-bold font-mono" style={{ color: zoneColors[i] }}>
-                {g.gap.toFixed(3)} <span className="text-xs text-muted-foreground">eV</span>
-              </p>
-              <p className="text-[10px] text-muted-foreground font-mono mt-1">
-                at {g.kBoundary}
-              </p>
-              <div className="mt-2 pt-2 border-t border-border/20 grid grid-cols-2 gap-1 text-[10px] font-mono text-muted-foreground">
-                <span>E₋ = {g.eBelow.toFixed(3)} eV</span>
-                <span>E₊ = {g.eAbove.toFixed(3)} eV</span>
-              </div>
-              {g.gap === 0 && (
-                <p className="text-[10px] text-amber-400 mt-1 font-medium">⚡ Gapless — Dirac point</p>
-              )}
-            </motion.div>
-          ))}
+
+                {g.gap === 0 && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2">
+                    <p className="text-[9px] text-amber-400 font-semibold">⚡ Zero Gap — Dirac Point</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">
+                      Linear dispersion E ∝ |k − K| near this point. Electrons behave as massless Dirac fermions (graphene).
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Summary comparison */}
+        <div className="mt-4 rounded-xl border border-border/30 bg-background/50 p-4">
+          <p className="text-xs font-semibold text-foreground mb-3">Zone Comparison Summary</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px] font-mono">
+              <thead>
+                <tr className="text-muted-foreground border-b border-border/30">
+                  <th className="text-left py-2 pr-4">Zone</th>
+                  <th className="text-right py-2 px-3">Band Gap</th>
+                  <th className="text-right py-2 px-3">E₋ (eV)</th>
+                  <th className="text-right py-2 px-3">E₊ (eV)</th>
+                  <th className="text-left py-2 pl-3">k-boundary</th>
+                  <th className="text-left py-2 pl-3">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zoneBandGaps.map((g, i) => (
+                  <tr key={i} className="border-b border-border/10">
+                    <td className="py-2 pr-4 font-bold" style={{ color: zoneColors[i] }}>{i + 1}{i === 0 ? "st" : i === 1 ? "nd" : "rd"} BZ</td>
+                    <td className="text-right py-2 px-3 font-bold text-foreground">{g.gap.toFixed(4)} eV</td>
+                    <td className="text-right py-2 px-3 text-muted-foreground">{g.eBelow.toFixed(4)}</td>
+                    <td className="text-right py-2 px-3 text-muted-foreground">{g.eAbove.toFixed(4)}</td>
+                    <td className="text-left py-2 pl-3 text-muted-foreground">{g.kBoundary}</td>
+                    <td className="text-left py-2 pl-3">{g.gap === 0 ? <span className="text-amber-400">Gapless</span> : <span className="text-destructive">Gap</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </GlassCard>
 
