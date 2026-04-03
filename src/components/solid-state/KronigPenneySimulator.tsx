@@ -634,7 +634,22 @@ export default function KronigPenneySimulator() {
   const [mass, setMass] = useState(1);
   const [energy, setEnergy] = useState(2.5);
   const [animating, setAnimating] = useState(true);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const timeRef = useRef(0);
+
+  const activeMaterial = MATERIALS_DB.find(m => m.key === selectedMaterial);
+
+  const handleMaterialSelect = (key: string) => {
+    setSelectedMaterial(key);
+    if (key === "") return;
+    const mat = MATERIALS_DB.find(m => m.key === key);
+    if (!mat) return;
+    setV0(mat.kpV0);
+    setA(mat.kpWellWidth);
+    setB(mat.kpBarrierWidth);
+    setMass(mat.effectiveMassElectron || 0.5);
+    setEnergy(Math.min(mat.bandGap || 1.5, mat.kpV0 * 0.6));
+  };
 
   const result = useMemo(() => solveKronigPenney({ V0, b, a, mass, numPoints: 200 }), [V0, b, a, mass]);
 
