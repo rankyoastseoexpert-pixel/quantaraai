@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getBrillouinZone, type LatticeType } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
-import { FileText, RotateCcw, Compass, Atom } from "lucide-react";
+import { FileText, RotateCcw, Compass, Atom, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 import * as THREE from "three";
 
