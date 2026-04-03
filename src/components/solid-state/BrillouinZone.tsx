@@ -433,7 +433,49 @@ export default function BrillouinZone() {
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Compass size={14} className="text-primary" /> Configuration
           </h3>
-          <div className="space-y-1">
+
+          {/* Materials Database */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Database size={10} /> Material Preset
+            </p>
+            <Select value={selectedMaterial} onValueChange={handleMaterialSelect}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Custom" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom" className="text-xs">Custom parameters</SelectItem>
+                {MATERIALS_DB.map(mat => (
+                  <SelectItem key={mat.key} value={mat.key} className="text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span>{mat.icon}</span>
+                      <span>{mat.name}</span>
+                      <span className="text-muted-foreground text-[9px]">a={mat.latticeConstant}Å</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {activeMaterial && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="rounded-lg border p-2.5 space-y-1.5 text-[10px]"
+              style={{ borderColor: `${activeMaterial.color}40`, backgroundColor: `${activeMaterial.color}08` }}
+            >
+              <p className="font-bold text-foreground flex items-center gap-1.5">
+                <span>{activeMaterial.icon}</span> {activeMaterial.name}
+              </p>
+              <div className="grid grid-cols-2 gap-1 font-mono text-muted-foreground">
+                <span>a = {activeMaterial.latticeConstant} Å</span>
+                <span>Eg = {activeMaterial.bandGap} eV</span>
+                <span>{activeMaterial.bandGapType}</span>
+                <span>{activeMaterial.latticeType}</span>
+              </div>
+            </motion.div>
+          )}
             {(["square", "honeycomb"] as const).map(lt => (
               <button key={lt} onClick={() => setType(lt)}
                 className={`w-full text-left text-xs px-3 py-2.5 rounded-lg border transition-all duration-300 ${
