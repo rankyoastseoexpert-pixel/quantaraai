@@ -4,10 +4,12 @@ import { OrbitControls, Text, Line } from "@react-three/drei";
 import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getBrillouinZone, type LatticeType } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
+import { MATERIALS_DB } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
-import { FileText, RotateCcw, Compass, Atom, BarChart3 } from "lucide-react";
+import { FileText, RotateCcw, Compass, Atom, BarChart3, Database, Beaker } from "lucide-react";
 import { motion } from "framer-motion";
 import * as THREE from "three";
 
@@ -373,6 +375,19 @@ export default function BrillouinZone() {
   const [a, setA] = useState(2.5);
   const [t, setT] = useState(1);
   const [showZones, setShowZones] = useState(3);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
+
+  const activeMaterial = MATERIALS_DB.find(m => m.key === selectedMaterial);
+
+  const handleMaterialSelect = (key: string) => {
+    setSelectedMaterial(key);
+    if (key === "" || key === "custom") return;
+    const mat = MATERIALS_DB.find(m => m.key === key);
+    if (!mat) return;
+    setA(mat.latticeConstant);
+    if (mat.latticeType === "honeycomb") setType("honeycomb");
+    else setType("square");
+  };
 
   const bz = useMemo(() => getBrillouinZone(type, a), [type, a]);
   const zoneBandGaps = useMemo(() => computeZoneBandGaps(a, t, type), [a, t, type]);
@@ -418,6 +433,49 @@ export default function BrillouinZone() {
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Compass size={14} className="text-primary" /> Configuration
           </h3>
+
+          {/* Materials Database */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Database size={10} /> Material Preset
+            </p>
+            <Select value={selectedMaterial} onValueChange={handleMaterialSelect}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Custom" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom" className="text-xs">Custom parameters</SelectItem>
+                {MATERIALS_DB.map(mat => (
+                  <SelectItem key={mat.key} value={mat.key} className="text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span>{mat.icon}</span>
+                      <span>{mat.name}</span>
+                      <span className="text-muted-foreground text-[9px]">a={mat.latticeConstant}Å</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {activeMaterial && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="rounded-lg border p-2.5 space-y-1.5 text-[10px]"
+              style={{ borderColor: `${activeMaterial.color}40`, backgroundColor: `${activeMaterial.color}08` }}
+            >
+              <p className="font-bold text-foreground flex items-center gap-1.5">
+                <span>{activeMaterial.icon}</span> {activeMaterial.name}
+              </p>
+              <div className="grid grid-cols-2 gap-1 font-mono text-muted-foreground">
+                <span>a = {activeMaterial.latticeConstant} Å</span>
+                <span>Eg = {activeMaterial.bandGap} eV</span>
+                <span>{activeMaterial.bandGapType}</span>
+                <span>{activeMaterial.latticeType}</span>
+              </div>
+            </motion.div>
+          )}
           <div className="space-y-1">
             {(["square", "honeycomb"] as const).map(lt => (
               <button key={lt} onClick={() => setType(lt)}
@@ -705,6 +763,47 @@ export default function BrillouinZone() {
             </table>
           </div>
         </div>
+
+        {/* Material comparison when selected */}
+        {activeMaterial && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 rounded-xl border-2 p-4"
+            style={{ borderColor: `${activeMaterial.color}30`, backgroundColor: `${activeMaterial.color}05` }}
+          >
+            <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Beaker size={13} className="text-primary" />
+              {activeMaterial.icon} {activeMaterial.name} — Experimental vs Simulated Band Gaps
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Experimental Band Gap</p>
+                <p className="text-xl font-black font-mono mt-1" style={{ color: activeMaterial.color }}>
+                  {activeMaterial.bandGap.toFixed(3)} eV
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{activeMaterial.bandGapType} gap</p>
+              </div>
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Lattice Constant</p>
+                <p className="text-xl font-black font-mono mt-1 text-primary">
+                  {activeMaterial.latticeConstant.toFixed(3)} Å
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{activeMaterial.latticeType}</p>
+              </div>
+              <div className="rounded-lg bg-background/60 border border-border/30 p-3 text-center">
+                <p className="text-[9px] text-muted-foreground uppercase">Simulated 1st BZ Gap</p>
+                <p className="text-xl font-black font-mono mt-1 text-foreground">
+                  {zoneBandGaps[0]?.gap.toFixed(3) || "—"} eV
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">tight-binding model</p>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-3 leading-relaxed">
+              {activeMaterial.description}
+            </p>
+          </motion.div>
+        )}
       </GlassCard>
 
       <DerivationBlock title="Brillouin Zone Theory & Derivation" steps={BZ_DERIVATION} />

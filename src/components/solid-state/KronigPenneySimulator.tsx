@@ -3,11 +3,13 @@ import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { solveKronigPenney } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
+import { MATERIALS_DB, type MaterialData } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
-import { Download, FileText, Play, Pause, Calculator } from "lucide-react";
+import { Download, FileText, Play, Pause, Calculator, Database, Beaker } from "lucide-react";
 import { motion } from "framer-motion";
 
 const SliderRow = ({ label, value, min, max, step, onChange, unit, color }: {
@@ -632,7 +634,22 @@ export default function KronigPenneySimulator() {
   const [mass, setMass] = useState(1);
   const [energy, setEnergy] = useState(2.5);
   const [animating, setAnimating] = useState(true);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const timeRef = useRef(0);
+
+  const activeMaterial = MATERIALS_DB.find(m => m.key === selectedMaterial);
+
+  const handleMaterialSelect = (key: string) => {
+    setSelectedMaterial(key);
+    if (key === "") return;
+    const mat = MATERIALS_DB.find(m => m.key === key);
+    if (!mat) return;
+    setV0(mat.kpV0);
+    setA(mat.kpWellWidth);
+    setB(mat.kpBarrierWidth);
+    setMass(mat.effectiveMassElectron || 0.5);
+    setEnergy(Math.min(mat.bandGap || 1.5, mat.kpV0 * 0.6));
+  };
 
   const result = useMemo(() => solveKronigPenney({ V0, b, a, mass, numPoints: 200 }), [V0, b, a, mass]);
 
@@ -968,11 +985,95 @@ export default function KronigPenneySimulator() {
             </Button>
           </div>
 
-          <SliderRow label="V₀ (Barrier Height)" value={V0} min={0.5} max={20} step={0.5} onChange={setV0} unit=" eV" color="text-red-400 bg-red-400/10" />
-          <SliderRow label="b (Barrier Width)" value={b} min={0.1} max={5} step={0.1} onChange={setB} unit=" Å" color="text-red-400 bg-red-400/10" />
-          <SliderRow label="a (Well Width)" value={a} min={0.5} max={10} step={0.1} onChange={setA} unit=" Å" />
+          {/* Materials Database Dropdown */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+              <Database size={11} className="text-primary" /> Material Preset
+            </p>
+            <Select value={selectedMaterial} onValueChange={handleMaterialSelect}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Custom parameters" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom" className="text-xs">Custom parameters</SelectItem>
+                {MATERIALS_DB.map(mat => (
+                  <SelectItem key={mat.key} value={mat.key} className="text-xs">
+                    <span className="flex items-center gap-2">
+                      <span>{mat.icon}</span>
+                      <span>{mat.name} ({mat.formula})</span>
+                      <span className="text-muted-foreground">— Eg = {mat.bandGap} eV</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Material comparison card */}
+          {activeMaterial && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-lg border-2 p-3 space-y-2"
+              style={{ borderColor: `${activeMaterial.color}40`, backgroundColor: `${activeMaterial.color}08` }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{activeMaterial.icon}</span>
+                <div>
+                  <p className="text-xs font-bold text-foreground">{activeMaterial.name} ({activeMaterial.formula})</p>
+                  <p className="text-[9px] text-muted-foreground">{activeMaterial.latticeType} • {activeMaterial.category}</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">{activeMaterial.description}</p>
+              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                <div className="rounded bg-background/60 p-1.5 text-center">
+                  <p className="text-muted-foreground">Band Gap</p>
+                  <p className="font-bold text-foreground">{activeMaterial.bandGap} eV</p>
+                  <p className="text-[8px] text-muted-foreground">{activeMaterial.bandGapType}</p>
+                </div>
+                <div className="rounded bg-background/60 p-1.5 text-center">
+                  <p className="text-muted-foreground">Lattice</p>
+                  <p className="font-bold text-foreground">{activeMaterial.latticeConstant} Å</p>
+                </div>
+                <div className="rounded bg-background/60 p-1.5 text-center">
+                  <p className="text-muted-foreground">m*_e</p>
+                  <p className="font-bold text-foreground">{activeMaterial.effectiveMassElectron} m_e</p>
+                </div>
+                <div className="rounded bg-background/60 p-1.5 text-center">
+                  <p className="text-muted-foreground">ε_r</p>
+                  <p className="font-bold text-foreground">{activeMaterial.dielectricConstant}</p>
+                </div>
+              </div>
+
+              {/* Simulated vs Experimental comparison */}
+              {result.bandGaps.length > 0 && (
+                <div className="rounded-lg bg-background/60 border border-border/30 p-2 mt-1">
+                  <p className="text-[9px] font-semibold text-foreground mb-1 flex items-center gap-1">
+                    <Beaker size={10} /> Simulation vs Experiment
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span className="text-muted-foreground">KP gap (1st):</span>
+                    <span className="text-primary font-bold">{result.bandGaps[0].gap.toFixed(3)} eV</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span className="text-muted-foreground">Experimental:</span>
+                    <span className="font-bold" style={{ color: activeMaterial.color }}>{activeMaterial.bandGap.toFixed(3)} eV</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-background/50 border border-border/20 mt-1.5 overflow-hidden relative">
+                    <div className="absolute h-full rounded-full bg-primary/60" style={{ width: `${Math.min((result.bandGaps[0].gap / Math.max(activeMaterial.bandGap, 0.01)) * 50, 100)}%` }} />
+                    <div className="absolute h-full w-0.5 rounded-full" style={{ left: "50%", backgroundColor: activeMaterial.color }} />
+                  </div>
+                  <p className="text-[8px] text-muted-foreground mt-1 text-center">Blue = simulated • Line = experimental</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          <SliderRow label="V₀ (Barrier Height)" value={V0} min={0.5} max={20} step={0.5} onChange={v => { setV0(v); setSelectedMaterial(""); }} unit=" eV" color="text-red-400 bg-red-400/10" />
+          <SliderRow label="b (Barrier Width)" value={b} min={0.1} max={5} step={0.1} onChange={v => { setB(v); setSelectedMaterial(""); }} unit=" Å" color="text-red-400 bg-red-400/10" />
+          <SliderRow label="a (Well Width)" value={a} min={0.5} max={10} step={0.1} onChange={v => { setA(v); setSelectedMaterial(""); }} unit=" Å" />
           <SliderRow label="E (Particle Energy)" value={energy} min={0.1} max={V0 * 2} step={0.1} onChange={setEnergy} unit=" eV" color="text-green-400 bg-green-400/10" />
-          <SliderRow label="m* (Effective Mass)" value={mass} min={0.1} max={3} step={0.1} onChange={setMass} unit=" mₑ" />
+          <SliderRow label="m* (Effective Mass)" value={mass} min={0.1} max={3} step={0.1} onChange={v => { setMass(v); setSelectedMaterial(""); }} unit=" mₑ" />
 
           {/* Status */}
           <div className={`rounded-lg p-3 border ${isTunneling ? "border-yellow-500/20 bg-yellow-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
