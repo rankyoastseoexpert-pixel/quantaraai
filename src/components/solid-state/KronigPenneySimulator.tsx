@@ -3,11 +3,13 @@ import GlassCard from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { solveKronigPenney } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
+import { MATERIALS_DB, type MaterialData } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
-import { Download, FileText, Play, Pause, Calculator } from "lucide-react";
+import { Download, FileText, Play, Pause, Calculator, Database, Beaker } from "lucide-react";
 import { motion } from "framer-motion";
 
 const SliderRow = ({ label, value, min, max, step, onChange, unit, color }: {
