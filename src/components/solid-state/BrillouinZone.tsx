@@ -476,6 +476,7 @@ export default function BrillouinZone() {
               </div>
             </motion.div>
           )}
+          <div className="space-y-1">
             {(["square", "honeycomb"] as const).map(lt => (
               <button key={lt} onClick={() => setType(lt)}
                 className={`w-full text-left text-xs px-3 py-2.5 rounded-lg border transition-all duration-300 ${
