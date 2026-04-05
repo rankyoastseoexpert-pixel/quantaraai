@@ -9,7 +9,7 @@ import { exportChartAsPDF } from "@/lib/pdfExport";
 import { MATERIALS_DB, type MaterialData } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
-import { Download, FileText, Play, Pause, Calculator, Database, Beaker } from "lucide-react";
+import { Download, FileText, Play, Pause, Calculator, Database, Beaker, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
 const SliderRow = ({ label, value, min, max, step, onChange, unit, color }: {
@@ -31,41 +31,17 @@ const BAND_COLORS = [
 ];
 
 const KP_DERIVATION = [
-  {
-    title: "Schrödinger Equation in Periodic Potential",
-    content: "For a 1D periodic potential V(x) with period d = a + b, we solve the time-independent Schrödinger equation in each region. In the well (0 < x < a), V = 0; in the barrier (a < x < d), V = V₀.",
-    equation: "−(ℏ²/2m) d²ψ/dx² + V(x)ψ = Eψ"
-  },
-  {
-    title: "Solutions in Each Region",
-    content: "In the well region (E > 0): ψ = Ae^{iαx} + Be^{−iαx} with α = √(2mE/ℏ²). In the barrier region (E < V₀): ψ = Ce^{βx} + De^{−βx} with β = √(2m(V₀−E)/ℏ²).",
-    equation: "α = √(2mE/ℏ²),  β = √(2m(V₀−E)/ℏ²)"
-  },
-  {
-    title: "Bloch's Theorem Application",
-    content: "By Bloch's theorem, ψ(x + d) = e^{ikd}ψ(x). Applying boundary conditions (continuity of ψ and dψ/dx) at x = 0 and x = a, and using Bloch periodicity, we obtain the secular equation.",
-    equation: "ψ_k(x) = e^{ikx} u_k(x),  u_k(x + d) = u_k(x)"
-  },
-  {
-    title: "Kronig–Penney Transcendental Equation (E < V₀)",
-    content: "The allowed energies satisfy this transcendental equation. Solutions exist only when |RHS| ≤ 1, defining the allowed energy bands. Gaps appear where |f(E)| > 1.",
-    equation: "cos(kd) = cos(αa)·cosh(βb) − [(α² − β²)/(2αβ)]·sin(αa)·sinh(βb)"
-  },
-  {
-    title: "Above-Barrier Case (E > V₀)",
-    content: "When E exceeds V₀, the barrier region becomes oscillatory: β → iκ where κ = √(2m(E−V₀)/ℏ²). The transcendental equation transforms accordingly.",
-    equation: "cos(kd) = cos(αa)·cos(κb) − [(α² + κ²)/(2ακ)]·sin(αa)·sin(κb)"
-  },
-  {
-    title: "Band Structure & Forbidden Gaps",
-    content: "Allowed energy bands correspond to ranges of E where |f(E)| ≤ 1. The Bloch wavevector k spans the first Brillouin zone: −π/d ≤ k ≤ π/d. Band gaps arise at zone boundaries where Bragg reflection occurs.",
-    equation: "E_gap ∝ 2|V_G| at k = nπ/d  (Bragg condition)"
-  },
+  { title: "Schrödinger Equation in Periodic Potential", content: "For a 1D periodic potential V(x) with period d = a + b, we solve the time-independent Schrödinger equation in each region. In the well (0 < x < a), V = 0; in the barrier (a < x < d), V = V₀.", equation: "−(ℏ²/2m) d²ψ/dx² + V(x)ψ = Eψ" },
+  { title: "Solutions in Each Region", content: "In the well region (E > 0): ψ = Ae^{iαx} + Be^{−iαx} with α = √(2mE/ℏ²). In the barrier region (E < V₀): ψ = Ce^{βx} + De^{−βx} with β = √(2m(V₀−E)/ℏ²).", equation: "α = √(2mE/ℏ²),  β = √(2m(V₀−E)/ℏ²)" },
+  { title: "Bloch's Theorem Application", content: "By Bloch's theorem, ψ(x + d) = e^{ikd}ψ(x). Applying boundary conditions (continuity of ψ and dψ/dx) at x = 0 and x = a, and using Bloch periodicity, we obtain the secular equation.", equation: "ψ_k(x) = e^{ikx} u_k(x),  u_k(x + d) = u_k(x)" },
+  { title: "Kronig–Penney Transcendental Equation (E < V₀)", content: "The allowed energies satisfy this transcendental equation. Solutions exist only when |RHS| ≤ 1, defining the allowed energy bands. Gaps appear where |f(E)| > 1.", equation: "cos(kd) = cos(αa)·cosh(βb) − [(α² − β²)/(2αβ)]·sin(αa)·sinh(βb)" },
+  { title: "Above-Barrier Case (E > V₀)", content: "When E exceeds V₀, the barrier region becomes oscillatory: β → iκ where κ = √(2m(E−V₀)/ℏ²). The transcendental equation transforms accordingly.", equation: "cos(kd) = cos(αa)·cos(κb) − [(α² + κ²)/(2ακ)]·sin(αa)·sin(κb)" },
+  { title: "Band Structure & Forbidden Gaps", content: "Allowed energy bands correspond to ranges of E where |f(E)| ≤ 1. The Bloch wavevector k spans the first Brillouin zone: −π/d ≤ k ≤ π/d. Band gaps arise at zone boundaries where Bragg reflection occurs.", equation: "E_gap ∝ 2|V_G| at k = nπ/d  (Bragg condition)" },
 ];
 
 const HBAR2_OVER_2M = 3.81; // eV·Å²
 
-// ─── Research-Grade KP Canvas ──────────────────────────────────────────
+// ─── Enhanced Research-Grade KP Canvas ────────────────────────────────
 function KronigPenneyCanvas({
   V0, a, b, mass, energy, animating, timeRef
 }: {
@@ -81,9 +57,9 @@ function KronigPenneyCanvas({
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const dpr = window.devicePixelRatio || 2; // min 2x for high DPI
+    const dpr = Math.max(window.devicePixelRatio, 2);
     const W = container.clientWidth;
-    const H = 520;
+    const H = 560;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     canvas.style.width = `${W}px`;
@@ -92,7 +68,6 @@ function KronigPenneyCanvas({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, W, H);
 
-    // ── Layout ──
     const pad = { left: 65, right: 45, top: 55, bottom: 70 };
     const plotW = W - pad.left - pad.right;
     const plotH = H - pad.top - pad.bottom;
@@ -106,9 +81,31 @@ function KronigPenneyCanvas({
     const toY = (v: number) => pad.top + plotH - (v / vMax) * plotH;
     const t = timeRef.current;
 
-    // ── Background subtle grid ──
-    ctx.globalAlpha = 0.06;
-    ctx.strokeStyle = "#6ea8d8";
+    // ── Dark background with gradient ──
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, "rgba(8, 12, 28, 0.95)");
+    bgGrad.addColorStop(1, "rgba(5, 8, 20, 0.95)");
+    ctx.fillStyle = bgGrad;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, W, H, 12);
+    ctx.fill();
+
+    // ── Subtle animated star field background ──
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 40; i++) {
+      const sx = (Math.sin(i * 7.3 + t * 0.1) * 0.5 + 0.5) * W;
+      const sy = (Math.cos(i * 11.1 + t * 0.05) * 0.5 + 0.5) * H;
+      const sr = 0.5 + Math.sin(t * 0.5 + i) * 0.3;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(120, 160, 255, ${0.3 + Math.sin(t + i) * 0.2})`;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Grid with glow ──
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = "#4a8fd8";
     ctx.lineWidth = 0.5;
     for (let gx = startX; gx <= startX + totalX; gx += d / 4) {
       ctx.beginPath(); ctx.moveTo(toX(gx), pad.top); ctx.lineTo(toX(gx), pad.top + plotH); ctx.stroke();
@@ -118,24 +115,26 @@ function KronigPenneyCanvas({
     }
     ctx.globalAlpha = 1;
 
-    // ── Allowed / Forbidden band shading ──
+    // ── Cell shading with glow effects ──
     for (let p = 0; p < numCells; p++) {
       const cellStart = startX + p * d;
-      // Well = allowed (subtle cyan)
       const wx1 = toX(cellStart), wx2 = toX(cellStart + a);
+      // Well - pulsing cyan glow
+      const wellGlow = 0.06 + 0.03 * Math.sin(t * 1.5 + p * 0.8);
       const wellGrad = ctx.createLinearGradient(wx1, pad.top, wx1, pad.top + plotH);
-      wellGrad.addColorStop(0, "rgba(0, 180, 255, 0.04)");
-      wellGrad.addColorStop(0.5, "rgba(0, 180, 255, 0.08)");
-      wellGrad.addColorStop(1, "rgba(0, 180, 255, 0.04)");
+      wellGrad.addColorStop(0, `rgba(0, 200, 255, ${wellGlow * 0.5})`);
+      wellGrad.addColorStop(0.5, `rgba(0, 200, 255, ${wellGlow})`);
+      wellGrad.addColorStop(1, `rgba(0, 200, 255, ${wellGlow * 0.5})`);
       ctx.fillStyle = wellGrad;
       ctx.fillRect(wx1, pad.top, wx2 - wx1, plotH);
 
-      // Barrier = forbidden (subtle red)
+      // Barrier - pulsing red
       const bx1 = toX(cellStart + a), bx2 = toX(cellStart + d);
+      const barGlow = 0.04 + 0.02 * Math.sin(t * 1.2 + p * 1.1);
       const barGrad = ctx.createLinearGradient(bx1, pad.top, bx1, pad.top + plotH);
-      barGrad.addColorStop(0, "rgba(255, 60, 60, 0.03)");
-      barGrad.addColorStop(0.5, "rgba(255, 60, 60, 0.06)");
-      barGrad.addColorStop(1, "rgba(255, 60, 60, 0.03)");
+      barGrad.addColorStop(0, `rgba(255, 60, 60, ${barGlow * 0.5})`);
+      barGrad.addColorStop(0.5, `rgba(255, 60, 60, ${barGlow})`);
+      barGrad.addColorStop(1, `rgba(255, 60, 60, ${barGlow * 0.5})`);
       ctx.fillStyle = barGrad;
       ctx.fillRect(bx1, pad.top, bx2 - bx1, plotH);
     }
@@ -146,32 +145,30 @@ function KronigPenneyCanvas({
     const yZero = toY(0);
     ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(pad.left + plotW, yZero); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + plotH); ctx.stroke();
-    // Arrow tips
     ctx.fillStyle = "rgba(150, 175, 210, 0.5)";
     ctx.beginPath(); ctx.moveTo(pad.left + plotW, yZero); ctx.lineTo(pad.left + plotW - 8, yZero - 4); ctx.lineTo(pad.left + plotW - 8, yZero + 4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left - 4, pad.top + 8); ctx.lineTo(pad.left + 4, pad.top + 8); ctx.fill();
 
-    // ── Draw periodic potential V(x) ──
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = "miter";
-    ctx.lineCap = "butt";
+    // ── Draw periodic potential V(x) with glowing edges ──
     for (let p = 0; p < numCells; p++) {
       const cellStart = startX + p * d;
-
-      // Barrier gradient fill
       const bx = toX(cellStart + a);
       const bw = toX(cellStart + d) - bx;
       const by = toY(V0);
       const bh = yZero - by;
+
+      // Barrier gradient fill with neon glow
       const barrierGrad = ctx.createLinearGradient(bx, by, bx, yZero);
-      barrierGrad.addColorStop(0, "rgba(255, 85, 85, 0.40)");
-      barrierGrad.addColorStop(0.6, "rgba(255, 85, 85, 0.15)");
+      barrierGrad.addColorStop(0, "rgba(255, 85, 85, 0.50)");
+      barrierGrad.addColorStop(0.3, "rgba(255, 50, 50, 0.25)");
       barrierGrad.addColorStop(1, "rgba(255, 85, 85, 0.05)");
       ctx.fillStyle = barrierGrad;
       ctx.fillRect(bx, by, bw, bh);
 
-      // Outline
-      ctx.strokeStyle = "rgba(255, 100, 100, 0.95)";
+      // Glowing edge
+      ctx.shadowColor = "rgba(255, 100, 100, 0.6)";
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = "rgba(255, 120, 120, 0.95)";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(toX(cellStart), yZero);
@@ -180,6 +177,7 @@ function KronigPenneyCanvas({
       ctx.lineTo(toX(cellStart + d), by);
       ctx.lineTo(toX(cellStart + d), yZero);
       ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     // ── V₀ reference line ──
@@ -189,97 +187,113 @@ function KronigPenneyCanvas({
     ctx.beginPath(); ctx.moveTo(pad.left, toY(V0)); ctx.lineTo(pad.left + plotW, toY(V0)); ctx.stroke();
     ctx.setLineDash([]);
 
-    // ── Energy level E ──
+    // ── Energy level E with glow ──
     const yE = toY(energy);
+    ctx.shadowColor = "rgba(50, 255, 150, 0.4)";
+    ctx.shadowBlur = 6;
     ctx.setLineDash([10, 5]);
-    ctx.strokeStyle = "rgba(50, 255, 150, 0.7)";
+    ctx.strokeStyle = "rgba(50, 255, 150, 0.8)";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad.left, yE); ctx.lineTo(pad.left + plotW, yE); ctx.stroke();
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
-    // ── Bloch wavefunction ψ_k(x) = u_k(x)·e^{ikx} ──
+    // ── Bloch wavefunction with probability density ──
     const alpha = Math.sqrt(Math.max(energy, 0.01) / (HBAR2_OVER_2M / mass));
-    const k_bloch = alpha * 0.6; // Bloch wavevector
+    const k_bloch = alpha * 0.6;
     const isTunneling = energy < V0;
     const beta = isTunneling ? Math.sqrt((V0 - energy) / (HBAR2_OVER_2M / mass)) : 0;
     const kappa = !isTunneling ? Math.sqrt((energy - V0) / (HBAR2_OVER_2M / mass)) : 0;
-
-    // Amplitude scaling
-    const ampScale = plotH * 0.12;
+    const ampScale = plotH * 0.13;
     const step = 0.02;
 
-    // Draw filled wavefunction
+    // Compute wavefunction values
+    const psiPoints: { x: number; px: number; psi: number }[] = [];
+    for (let x = startX; x <= startX + totalX; x += step) {
+      const cellPos = ((x - startX) % d + d) % d;
+      const inWell = cellPos < a;
+      let psi: number;
+      if (inWell) {
+        psi = Math.sin(alpha * cellPos) * Math.cos(k_bloch * x - t * 2);
+      } else {
+        const barrierPos = cellPos - a;
+        if (isTunneling) {
+          const decay = Math.exp(-beta * barrierPos) * 0.7 + Math.exp(-beta * (b - barrierPos)) * 0.3;
+          psi = decay * Math.sin(alpha * a) * Math.cos(k_bloch * x - t * 2);
+        } else {
+          psi = Math.sin(kappa * barrierPos + alpha * a) * Math.cos(k_bloch * x - t * 2) * 0.8;
+        }
+      }
+      const envelope = 0.7 + 0.3 * Math.cos(k_bloch * x * 0.3);
+      psi *= envelope;
+      psiPoints.push({ x, px: toX(x), psi });
+    }
+
+    // ── Draw |ψ|² probability density as filled area ──
     ctx.beginPath();
-    let firstPoint = true;
-    for (let x = startX; x <= startX + totalX; x += step) {
-      // Determine which cell and region
-      const cellPos = ((x - startX) % d + d) % d;
-      const inWell = cellPos < a;
-
-      let psi: number;
-      if (inWell) {
-        // Oscillatory in well: sin(αx)
-        psi = Math.sin(alpha * cellPos) * Math.cos(k_bloch * x - t * 2);
-      } else {
-        // In barrier
-        const barrierPos = cellPos - a;
-        if (isTunneling) {
-          // Exponential decay (tunneling)
-          const decay = Math.exp(-beta * barrierPos) * 0.7 + Math.exp(-beta * (b - barrierPos)) * 0.3;
-          psi = decay * Math.sin(alpha * a) * Math.cos(k_bloch * x - t * 2);
-        } else {
-          // Oscillatory above barrier
-          psi = Math.sin(kappa * barrierPos + alpha * a) * Math.cos(k_bloch * x - t * 2) * 0.8;
-        }
-      }
-
-      // Bloch envelope modulation
-      const envelope = 0.7 + 0.3 * Math.cos(k_bloch * x * 0.3);
-      psi *= envelope;
-
-      const px = toX(x);
-      const py = yE - psi * ampScale;
-      if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
-      else ctx.lineTo(px, py);
+    ctx.moveTo(psiPoints[0].px, yE);
+    for (const pt of psiPoints) {
+      const py = yE - Math.abs(pt.psi) * ampScale * 0.8;
+      ctx.lineTo(pt.px, py);
     }
+    ctx.lineTo(psiPoints[psiPoints.length - 1].px, yE);
+    ctx.closePath();
+    const densGrad = ctx.createLinearGradient(0, yE - ampScale, 0, yE);
+    densGrad.addColorStop(0, isTunneling ? "rgba(0, 200, 255, 0.20)" : "rgba(100, 255, 200, 0.20)");
+    densGrad.addColorStop(1, "rgba(0, 100, 200, 0.02)");
+    ctx.fillStyle = densGrad;
+    ctx.fill();
 
-    // Fill under curve
-    const psiGrad = ctx.createLinearGradient(0, yE - ampScale, 0, yE + ampScale);
-    psiGrad.addColorStop(0, "rgba(0, 200, 255, 0.15)");
-    psiGrad.addColorStop(0.5, "rgba(0, 200, 255, 0.02)");
-    psiGrad.addColorStop(1, "rgba(120, 80, 255, 0.15)");
-
-    // Close path for fill
-    const savePath = new Path2D();
-    firstPoint = true;
-    for (let x = startX; x <= startX + totalX; x += step) {
-      const cellPos = ((x - startX) % d + d) % d;
-      const inWell = cellPos < a;
-      let psi: number;
-      if (inWell) {
-        psi = Math.sin(alpha * cellPos) * Math.cos(k_bloch * x - t * 2);
-      } else {
-        const barrierPos = cellPos - a;
-        if (isTunneling) {
-          const decay = Math.exp(-beta * barrierPos) * 0.7 + Math.exp(-beta * (b - barrierPos)) * 0.3;
-          psi = decay * Math.sin(alpha * a) * Math.cos(k_bloch * x - t * 2);
-        } else {
-          psi = Math.sin(kappa * barrierPos + alpha * a) * Math.cos(k_bloch * x - t * 2) * 0.8;
-        }
-      }
-      const envelope = 0.7 + 0.3 * Math.cos(k_bloch * x * 0.3);
-      psi *= envelope;
-      const px = toX(x);
-      const py = yE - psi * ampScale;
-      if (firstPoint) { savePath.moveTo(px, py); firstPoint = false; }
-      else savePath.lineTo(px, py);
-    }
-
-    // Stroke wavefunction
-    ctx.strokeStyle = isTunneling ? "rgba(0, 220, 255, 0.9)" : "rgba(100, 255, 200, 0.9)";
-    ctx.lineWidth = 2;
+    // ── Draw wavefunction with neon glow ──
+    ctx.shadowColor = isTunneling ? "rgba(0, 220, 255, 0.6)" : "rgba(100, 255, 200, 0.6)";
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = isTunneling ? "rgba(0, 220, 255, 0.95)" : "rgba(100, 255, 200, 0.95)";
+    ctx.lineWidth = 2.5;
     ctx.lineJoin = "round";
-    ctx.stroke(savePath);
+    ctx.beginPath();
+    let first = true;
+    for (const pt of psiPoints) {
+      const py = yE - pt.psi * ampScale;
+      if (first) { ctx.moveTo(pt.px, py); first = false; } else ctx.lineTo(pt.px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // ── Animated particle along wavefunction ──
+    const particleX = startX + ((t * 0.5) % totalX);
+    const particlePx = toX(particleX);
+    const cellPosP = ((particleX - startX) % d + d) % d;
+    const inWellP = cellPosP < a;
+    let particlePsi: number;
+    if (inWellP) {
+      particlePsi = Math.sin(alpha * cellPosP) * Math.cos(k_bloch * particleX - t * 2);
+    } else {
+      const bp = cellPosP - a;
+      if (isTunneling) {
+        const dec = Math.exp(-beta * bp) * 0.7 + Math.exp(-beta * (b - bp)) * 0.3;
+        particlePsi = dec * Math.sin(alpha * a) * Math.cos(k_bloch * particleX - t * 2);
+      } else {
+        particlePsi = Math.sin(kappa * (cellPosP - a) + alpha * a) * Math.cos(k_bloch * particleX - t * 2) * 0.8;
+      }
+    }
+    particlePsi *= (0.7 + 0.3 * Math.cos(k_bloch * particleX * 0.3));
+    const particlePy = yE - particlePsi * ampScale;
+
+    // Glowing particle
+    const glowR = 12 + 4 * Math.sin(t * 3);
+    const particleGrad = ctx.createRadialGradient(particlePx, particlePy, 0, particlePx, particlePy, glowR);
+    particleGrad.addColorStop(0, isTunneling ? "rgba(0, 255, 255, 0.9)" : "rgba(100, 255, 200, 0.9)");
+    particleGrad.addColorStop(0.3, isTunneling ? "rgba(0, 200, 255, 0.4)" : "rgba(100, 255, 200, 0.4)");
+    particleGrad.addColorStop(1, "rgba(0, 100, 200, 0)");
+    ctx.fillStyle = particleGrad;
+    ctx.beginPath();
+    ctx.arc(particlePx, particlePy, glowR, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner dot
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(particlePx, particlePy, 3, 0, Math.PI * 2);
+    ctx.fill();
 
     // ── Tunneling indicators ──
     if (isTunneling && energy > 0) {
@@ -287,67 +301,42 @@ function KronigPenneyCanvas({
         const cellStart = startX + p * d;
         const bx1 = toX(cellStart + a);
         const bx2 = toX(cellStart + d);
-        const midBx = (bx1 + bx2) / 2;
-        // Small tunneling arrow
-        ctx.strokeStyle = "rgba(255, 200, 50, 0.5)";
+        ctx.strokeStyle = "rgba(255, 200, 50, 0.4)";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(bx1 + 3, yE);
-        ctx.lineTo(bx2 - 3, yE);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx1 + 3, yE); ctx.lineTo(bx2 - 3, yE); ctx.stroke();
         ctx.setLineDash([]);
-        // Arrow tip
-        ctx.fillStyle = "rgba(255, 200, 50, 0.6)";
-        ctx.beginPath();
-        ctx.moveTo(bx2 - 3, yE);
-        ctx.lineTo(bx2 - 9, yE - 3);
-        ctx.lineTo(bx2 - 9, yE + 3);
-        ctx.fill();
+        ctx.fillStyle = "rgba(255, 200, 50, 0.5)";
+        ctx.beginPath(); ctx.moveTo(bx2 - 3, yE); ctx.lineTo(bx2 - 9, yE - 3); ctx.lineTo(bx2 - 9, yE + 3); ctx.fill();
       }
     }
 
-    // ── Dimension arrows (on central cell) ──
+    // ── Dimension arrows ──
     const centralCell = Math.floor(numCells / 2);
     const cellS = startX + centralCell * d;
     const arrowY = yZero + 22;
+    ctx.strokeStyle = "rgba(0, 200, 255, 0.7)"; ctx.fillStyle = "rgba(0, 200, 255, 0.85)";
+    drawDimArrow(ctx, toX(cellS), toX(cellS + a), arrowY, `a = ${a} Å`);
+    ctx.strokeStyle = "rgba(255, 100, 100, 0.7)"; ctx.fillStyle = "rgba(255, 100, 100, 0.85)";
+    drawDimArrow(ctx, toX(cellS + a), toX(cellS + d), arrowY, `b = ${b} Å`);
+    ctx.strokeStyle = "rgba(180, 160, 255, 0.5)"; ctx.fillStyle = "rgba(180, 160, 255, 0.7)";
+    drawDimArrow(ctx, toX(cellS), toX(cellS + d), arrowY + 22, `d = ${(a + b).toFixed(2)} Å`);
 
-    // 'a' dimension
-    ctx.strokeStyle = "rgba(0, 200, 255, 0.7)";
-    ctx.fillStyle = "rgba(0, 200, 255, 0.85)";
-    ctx.lineWidth = 1.2;
-    const aX1 = toX(cellS), aX2 = toX(cellS + a);
-    drawDimArrow(ctx, aX1, aX2, arrowY, `a = ${a} Å`);
-
-    // 'b' dimension
-    ctx.strokeStyle = "rgba(255, 100, 100, 0.7)";
-    ctx.fillStyle = "rgba(255, 100, 100, 0.85)";
-    const bX1 = toX(cellS + a), bX2 = toX(cellS + d);
-    drawDimArrow(ctx, bX1, bX2, arrowY, `b = ${b} Å`);
-
-    // 'd' dimension (below)
-    ctx.strokeStyle = "rgba(180, 160, 255, 0.5)";
-    ctx.fillStyle = "rgba(180, 160, 255, 0.7)";
-    drawDimArrow(ctx, aX1, bX2, arrowY + 22, `d = ${(a + b).toFixed(2)} Å`);
-
-    // ── Labels (LaTeX-style) ──
+    // ── Labels ──
     ctx.textAlign = "right";
-    // V₀
     ctx.fillStyle = "rgba(255, 180, 50, 0.9)";
-    ctx.font = "italic 13px 'Georgia', 'Times New Roman', serif";
+    ctx.font = "italic 13px 'Georgia', serif";
     ctx.fillText(`V₀ = ${V0} eV`, pad.left + plotW, toY(V0) - 8);
-    // E
     ctx.fillStyle = "rgba(50, 255, 150, 0.9)";
     ctx.fillText(`E = ${energy.toFixed(2)} eV`, pad.left + plotW, yE - 8);
-    // V = 0
     ctx.fillStyle = "rgba(150, 170, 200, 0.6)";
-    ctx.font = "italic 12px 'Georgia', 'Times New Roman', serif";
+    ctx.font = "italic 12px 'Georgia', serif";
     ctx.textAlign = "left";
     ctx.fillText("V = 0", pad.left + 4, yZero - 6);
 
-    // ── Axis labels ──
+    // Axis labels
     ctx.fillStyle = "rgba(170, 190, 220, 0.8)";
-    ctx.font = "italic 13px 'Georgia', 'Times New Roman', serif";
+    ctx.font = "italic 13px 'Georgia', serif";
     ctx.textAlign = "center";
     ctx.fillText("x  (Å)", pad.left + plotW / 2, H - 12);
     ctx.save();
@@ -356,16 +345,14 @@ function KronigPenneyCanvas({
     ctx.fillText("V(x), ψₖ(x)  (eV)", 0, 0);
     ctx.restore();
 
-    // ── Title ──
+    // Title
     ctx.fillStyle = "rgba(230, 240, 255, 0.95)";
     ctx.font = "bold 15px 'Inter', sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("Kronig–Penney Model — 1D Periodic Lattice Potential", pad.left, 22);
-
-    // Subtitle
     ctx.fillStyle = "rgba(170, 190, 220, 0.7)";
-    ctx.font = "italic 12px 'Georgia', 'Times New Roman', serif";
-    ctx.fillText("ψₖ(x) = uₖ(x)·eⁱᵏˣ    (Bloch wavefunction)", pad.left, 40);
+    ctx.font = "italic 12px 'Georgia', serif";
+    ctx.fillText("ψₖ(x) = uₖ(x)·eⁱᵏˣ    (Bloch wavefunction)  •  |ψ|² shaded", pad.left, 40);
 
     // Status badge
     ctx.textAlign = "right";
@@ -384,19 +371,16 @@ function KronigPenneyCanvas({
       ctx.fillText(`E > V₀`, pad.left + plotW, 36);
     }
 
-    // Physics info
     ctx.textAlign = "right";
     ctx.font = "10px 'JetBrains Mono', monospace";
     ctx.fillStyle = "rgba(150, 170, 200, 0.5)";
-    ctx.fillText(`α = ${alpha.toFixed(3)} Å⁻¹  |  k = ${k_bloch.toFixed(3)} Å⁻¹`, pad.left + plotW, H - 18);
+    ctx.fillText(`α = ${alpha.toFixed(3)} Å⁻¹  |  k = ${k_bloch.toFixed(3)} Å⁻¹  |  t = ${t.toFixed(1)}`, pad.left + plotW, H - 18);
 
   }, [V0, a, b, mass, energy, timeRef]);
 
   useEffect(() => {
     const animate = () => {
-      if (animating) {
-        timeRef.current += 0.03;
-      }
+      if (animating) timeRef.current += 0.03;
       draw();
       rafRef.current = requestAnimationFrame(animate);
     };
@@ -416,12 +400,355 @@ function drawDimArrow(ctx: CanvasRenderingContext2D, x1: number, x2: number, y: 
   ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x1, y - 4); ctx.lineTo(x1, y + 4); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x2, y - 4); ctx.lineTo(x2, y + 4); ctx.stroke();
-  // Arrow heads
   ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x1 + 5, y - 3); ctx.lineTo(x1 + 5, y + 3); ctx.fill();
   ctx.beginPath(); ctx.moveTo(x2, y); ctx.lineTo(x2 - 5, y - 3); ctx.lineTo(x2 - 5, y + 3); ctx.fill();
   ctx.font = "bold 11px 'JetBrains Mono', monospace";
   ctx.textAlign = "center";
   ctx.fillText(label, (x1 + x2) / 2, y + 14);
+}
+
+// ─── Bloch Oscillation Visualizer ─────────────────────────────────────
+function BlochOscillationCanvas({
+  V0, a, b, mass, electricField, animating, timeRef
+}: {
+  V0: number; a: number; b: number; mass: number; electricField: number;
+  animating: boolean; timeRef: React.MutableRefObject<number>;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>(0);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = Math.max(window.devicePixelRatio, 2);
+    const W = container.clientWidth;
+    const H = 480;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const t = timeRef.current;
+    const d = a + b;
+    const numCells = 10;
+    const totalX = d * numCells;
+    const startX = -d * (numCells / 2);
+    const vMax = V0 * 2;
+
+    const pad = { left: 60, right: 40, top: 50, bottom: 60 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    const toX = (x: number) => pad.left + ((x - startX) / totalX) * plotW;
+    const toY = (v: number) => pad.top + plotH - (v / vMax) * plotH;
+
+    // Background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, "rgba(5, 8, 25, 0.95)");
+    bgGrad.addColorStop(0.5, "rgba(10, 15, 35, 0.95)");
+    bgGrad.addColorStop(1, "rgba(5, 8, 25, 0.95)");
+    ctx.fillStyle = bgGrad;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, W, H, 12);
+    ctx.fill();
+
+    // Bloch oscillation parameters
+    const omega_B = electricField * d * 0.5; // Bloch frequency ∝ eF·d/ℏ
+    const T_B = omega_B > 0.001 ? (2 * Math.PI) / omega_B : 9999;
+    const x_amplitude = omega_B > 0.001 ? 2 / omega_B : 0; // spatial amplitude of oscillation
+    
+    // Wave packet center position (Bloch oscillation)
+    const packetCenter = x_amplitude * Math.sin(omega_B * t);
+    const packetK = omega_B > 0.001 ? Math.cos(omega_B * t) : 0; // momentum oscillation
+    
+    // Draw tilted potential V(x) + eFx
+    const yZero = toY(0);
+    
+    // Cell shading
+    for (let p = 0; p < numCells; p++) {
+      const cellStart = startX + p * d;
+      const wx1 = toX(cellStart), wx2 = toX(cellStart + a);
+      ctx.fillStyle = `rgba(0, 180, 255, ${0.04 + 0.02 * Math.sin(t + p * 0.5)})`;
+      ctx.fillRect(wx1, pad.top, wx2 - wx1, plotH);
+      const bx1 = toX(cellStart + a), bx2 = toX(cellStart + d);
+      ctx.fillStyle = `rgba(255, 80, 80, ${0.03 + 0.015 * Math.sin(t * 0.8 + p)})`;
+      ctx.fillRect(bx1, pad.top, bx2 - bx1, plotH);
+    }
+
+    // Draw tilted periodic potential
+    ctx.lineWidth = 2;
+    for (let p = 0; p < numCells; p++) {
+      const cellStart = startX + p * d;
+      const tilt = electricField * 0.3;
+
+      // Barrier with tilt
+      const wellV = tilt * cellStart;
+      const barrierV = V0 + tilt * (cellStart + a);
+
+      // Barrier fill
+      const bx = toX(cellStart + a);
+      const bw = toX(cellStart + d) - bx;
+      const by1 = toY(barrierV);
+      const by2 = toY(wellV);
+      const barGrad = ctx.createLinearGradient(bx, by1, bx, by2);
+      barGrad.addColorStop(0, "rgba(255, 80, 80, 0.35)");
+      barGrad.addColorStop(1, "rgba(255, 80, 80, 0.05)");
+      ctx.fillStyle = barGrad;
+      ctx.fillRect(bx, Math.min(by1, by2), bw, Math.abs(by2 - by1));
+
+      // Outline
+      ctx.shadowColor = "rgba(255, 100, 100, 0.4)";
+      ctx.shadowBlur = 5;
+      ctx.strokeStyle = "rgba(255, 100, 100, 0.8)";
+      ctx.beginPath();
+      ctx.moveTo(toX(cellStart), toY(wellV));
+      ctx.lineTo(toX(cellStart + a), toY(wellV));
+      ctx.lineTo(toX(cellStart + a), toY(barrierV));
+      ctx.lineTo(toX(cellStart + d), toY(barrierV));
+      ctx.lineTo(toX(cellStart + d), toY(wellV + tilt * d));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Electric field line (tilt)
+    if (electricField > 0) {
+      ctx.setLineDash([8, 4]);
+      ctx.strokeStyle = "rgba(255, 220, 100, 0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(startX), toY(electricField * 0.3 * startX));
+      ctx.lineTo(toX(startX + totalX), toY(electricField * 0.3 * (startX + totalX)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // ── Wave packet ──
+    const sigma = d * 1.2; // wave packet width
+    const alpha = Math.sqrt(Math.max(1.5, 0.01) / (HBAR2_OVER_2M / mass));
+    const waveK = alpha * 0.6 + packetK * 2;
+    
+    // Compute wave packet
+    const wpPoints: { px: number; amp: number; phase: number }[] = [];
+    for (let x = startX; x <= startX + totalX; x += 0.04) {
+      const dx = x - packetCenter;
+      const gaussianEnv = Math.exp(-(dx * dx) / (2 * sigma * sigma));
+      const cellPos = ((x - startX) % d + d) % d;
+      const inWell = cellPos < a;
+      
+      // Modulation by periodic potential
+      let modulation = 1;
+      if (!inWell) {
+        const bp = cellPos - a;
+        modulation = Math.exp(-0.3 * bp) * 0.5 + 0.5;
+      }
+      
+      const phase = waveK * x - omega_B * t * 3;
+      const amp = gaussianEnv * modulation;
+      wpPoints.push({ px: toX(x), amp, phase });
+    }
+
+    // Draw |ψ|² density
+    const wpY = toY(V0 * 0.4);
+    const wpAmpScale = plotH * 0.15;
+    
+    ctx.beginPath();
+    ctx.moveTo(wpPoints[0].px, wpY);
+    for (const pt of wpPoints) {
+      ctx.lineTo(pt.px, wpY - pt.amp * pt.amp * wpAmpScale);
+    }
+    ctx.lineTo(wpPoints[wpPoints.length - 1].px, wpY);
+    ctx.closePath();
+    const wpDensGrad = ctx.createLinearGradient(0, wpY - wpAmpScale, 0, wpY);
+    wpDensGrad.addColorStop(0, "rgba(255, 180, 50, 0.25)");
+    wpDensGrad.addColorStop(1, "rgba(255, 100, 50, 0.02)");
+    ctx.fillStyle = wpDensGrad;
+    ctx.fill();
+
+    // Draw Re(ψ)
+    ctx.shadowColor = "rgba(255, 200, 50, 0.6)";
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = "rgba(255, 200, 50, 0.9)";
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    let first = true;
+    for (const pt of wpPoints) {
+      const psi = pt.amp * Math.cos(pt.phase);
+      const py = wpY - psi * wpAmpScale;
+      if (first) { ctx.moveTo(pt.px, py); first = false; } else ctx.lineTo(pt.px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Draw Im(ψ) faintly
+    ctx.strokeStyle = "rgba(150, 100, 255, 0.4)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    first = true;
+    for (const pt of wpPoints) {
+      const psi = pt.amp * Math.sin(pt.phase);
+      const py = wpY - psi * wpAmpScale * 0.7;
+      if (first) { ctx.moveTo(pt.px, py); first = false; } else ctx.lineTo(pt.px, py);
+    }
+    ctx.stroke();
+
+    // ── Glowing center marker ──
+    const centerPx = toX(packetCenter);
+    const glowR = 16 + 6 * Math.sin(t * 2.5);
+    const cGrad = ctx.createRadialGradient(centerPx, wpY, 0, centerPx, wpY, glowR);
+    cGrad.addColorStop(0, "rgba(255, 230, 100, 0.95)");
+    cGrad.addColorStop(0.3, "rgba(255, 180, 50, 0.5)");
+    cGrad.addColorStop(0.7, "rgba(255, 100, 0, 0.15)");
+    cGrad.addColorStop(1, "rgba(255, 50, 0, 0)");
+    ctx.fillStyle = cGrad;
+    ctx.beginPath();
+    ctx.arc(centerPx, wpY, glowR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(centerPx, wpY, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Trail (recent positions) ──
+    for (let i = 1; i <= 8; i++) {
+      const pastT = t - i * 0.15;
+      const pastX = x_amplitude * Math.sin(omega_B * pastT);
+      const pastPx = toX(pastX);
+      const trailAlpha = 0.3 * (1 - i / 9);
+      ctx.fillStyle = `rgba(255, 200, 50, ${trailAlpha})`;
+      ctx.beginPath();
+      ctx.arc(pastPx, wpY, 3 - i * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── k-space oscillation inset ──
+    const insetW = 140;
+    const insetH = 100;
+    const insetX = W - pad.right - insetW - 10;
+    const insetY = pad.top + 10;
+    
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.strokeStyle = "rgba(100, 140, 200, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(insetX, insetY, insetW, insetH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(180, 200, 230, 0.8)";
+    ctx.font = "bold 9px 'JetBrains Mono', monospace";
+    ctx.textAlign = "left";
+    ctx.fillText("k-space", insetX + 8, insetY + 14);
+
+    // Draw k oscillation
+    const kMax = Math.PI / d;
+    const kCenterX = insetX + insetW / 2;
+    const kCenterY = insetY + insetH / 2 + 8;
+    const kScale = (insetW - 30) / (2 * kMax);
+
+    // BZ boundaries
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(100, 140, 200, 0.3)";
+    ctx.beginPath();
+    ctx.moveTo(kCenterX - kMax * kScale, insetY + 20);
+    ctx.lineTo(kCenterX - kMax * kScale, insetY + insetH - 5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(kCenterX + kMax * kScale, insetY + 20);
+    ctx.lineTo(kCenterX + kMax * kScale, insetY + insetH - 5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "rgba(100, 140, 200, 0.5)";
+    ctx.font = "8px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("−π/d", kCenterX - kMax * kScale, insetY + insetH - 2);
+    ctx.fillText("+π/d", kCenterX + kMax * kScale, insetY + insetH - 2);
+
+    // Current k point
+    const currentK = packetK * kMax;
+    const kPx = kCenterX + currentK * kScale;
+    const kGrad = ctx.createRadialGradient(kPx, kCenterY, 0, kPx, kCenterY, 8);
+    kGrad.addColorStop(0, "rgba(255, 200, 50, 0.9)");
+    kGrad.addColorStop(1, "rgba(255, 100, 0, 0)");
+    ctx.fillStyle = kGrad;
+    ctx.beginPath();
+    ctx.arc(kPx, kCenterY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(kPx, kCenterY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // k trajectory
+    ctx.strokeStyle = "rgba(255, 200, 50, 0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(kCenterX - kMax * kScale, kCenterY);
+    ctx.lineTo(kCenterX + kMax * kScale, kCenterY);
+    ctx.stroke();
+
+    // ── Labels ──
+    ctx.fillStyle = "rgba(230, 240, 255, 0.95)";
+    ctx.font = "bold 15px 'Inter', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Bloch Oscillation — Wave Packet Dynamics", pad.left, 22);
+    ctx.fillStyle = "rgba(170, 190, 220, 0.7)";
+    ctx.font = "italic 12px 'Georgia', serif";
+    ctx.fillText("eF applied → k(t) = k₀ + eFt/ℏ → periodic in k → oscillation in x", pad.left, 40);
+
+    // Axes
+    ctx.strokeStyle = "rgba(150, 175, 210, 0.4)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top + plotH); ctx.lineTo(pad.left + plotW, pad.top + plotH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + plotH); ctx.stroke();
+
+    ctx.fillStyle = "rgba(170, 190, 220, 0.8)";
+    ctx.font = "italic 13px 'Georgia', serif";
+    ctx.textAlign = "center";
+    ctx.fillText("x  (Å)", pad.left + plotW / 2, H - 10);
+
+    // Info panel
+    ctx.textAlign = "right";
+    ctx.font = "10px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "rgba(255, 200, 50, 0.8)";
+    ctx.fillText(`ω_B = ${omega_B.toFixed(3)} rad/s  |  T_B = ${T_B < 100 ? T_B.toFixed(2) : "∞"} s  |  F = ${electricField.toFixed(2)} V/Å`, pad.left + plotW, H - 18);
+    ctx.fillStyle = "rgba(150, 170, 200, 0.5)";
+    ctx.fillText(`x(t) = ${packetCenter.toFixed(2)} Å  |  k(t)/k_max = ${packetK.toFixed(3)}`, pad.left + plotW, H - 32);
+
+    // Legend
+    ctx.textAlign = "left";
+    ctx.font = "9px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "rgba(255, 200, 50, 0.8)";
+    ctx.fillText("━ Re(ψ)", pad.left, H - 32);
+    ctx.fillStyle = "rgba(150, 100, 255, 0.7)";
+    ctx.fillText("━ Im(ψ)", pad.left + 70, H - 32);
+    ctx.fillStyle = "rgba(255, 180, 50, 0.6)";
+    ctx.fillText("█ |ψ|²", pad.left + 140, H - 32);
+
+  }, [V0, a, b, mass, electricField, timeRef]);
+
+  useEffect(() => {
+    const animate = () => {
+      if (animating) timeRef.current += 0.03;
+      draw();
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [draw, animating, timeRef]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <canvas ref={canvasRef} className="w-full rounded-lg" />
+    </div>
+  );
 }
 
 // ─── f(E) vs E Plot ─────────────────────────────────────────────────────
@@ -450,16 +777,14 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     const ph = H - pad.top - pad.bottom;
     const Emax = V0 * 2.5;
     const numPts = 600;
-    const fRange = 4; // show f from -fRange to +fRange
+    const fRange = 4;
 
     const toX = (E: number) => pad.left + (E / Emax) * pw;
     const toY = (f: number) => pad.top + ph / 2 - (f / fRange) * (ph / 2);
 
-    // Background
     ctx.fillStyle = "rgba(10,15,30,0.3)";
     ctx.fillRect(pad.left, pad.top, pw, ph);
 
-    // Allowed band region (-1 to 1)
     const y1 = toY(1), y2 = toY(-1);
     const bandGrad = ctx.createLinearGradient(0, y1, 0, y2);
     bandGrad.addColorStop(0, "rgba(34,197,94,0.12)");
@@ -468,7 +793,6 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     ctx.fillStyle = bandGrad;
     ctx.fillRect(pad.left, y1, pw, y2 - y1);
 
-    // +1 and -1 lines
     ctx.setLineDash([6, 4]);
     ctx.strokeStyle = "rgba(34,197,94,0.6)";
     ctx.lineWidth = 1.5;
@@ -476,7 +800,6 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     ctx.beginPath(); ctx.moveTo(pad.left, y2); ctx.lineTo(pad.left + pw, y2); ctx.stroke();
     ctx.setLineDash([]);
 
-    // Labels for ±1
     ctx.fillStyle = "rgba(34,197,94,0.8)";
     ctx.font = "bold 10px 'JetBrains Mono', monospace";
     ctx.textAlign = "right";
@@ -484,29 +807,26 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     ctx.fillText("−1", pad.left - 8, y2 + 4);
     ctx.fillText("ALLOWED", pad.left + 50, (y1 + y2) / 2 + 3);
 
-    // Zero line
     ctx.strokeStyle = "rgba(150,175,210,0.3)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.left, toY(0)); ctx.lineTo(pad.left + pw, toY(0)); ctx.stroke();
 
-    // Compute f(E) curve
     const points: { E: number; f: number }[] = [];
     for (let i = 0; i < numPts; i++) {
       const E = (i / numPts) * Emax + 0.01;
-      const alpha = Math.sqrt(E / (HBAR2_OVER_2M / mass));
+      const alp = Math.sqrt(E / (HBAR2_OVER_2M / mass));
       let f: number;
       if (E < V0) {
-        const beta = Math.sqrt((V0 - E) / (HBAR2_OVER_2M / mass));
-        f = Math.cos(alpha * a) * Math.cosh(beta * b) - ((alpha ** 2 - beta ** 2) / (2 * alpha * beta)) * Math.sin(alpha * a) * Math.sinh(beta * b);
+        const bet = Math.sqrt((V0 - E) / (HBAR2_OVER_2M / mass));
+        f = Math.cos(alp * a) * Math.cosh(bet * b) - ((alp ** 2 - bet ** 2) / (2 * alp * bet)) * Math.sin(alp * a) * Math.sinh(bet * b);
       } else {
-        const kappa = Math.sqrt((E - V0) / (HBAR2_OVER_2M / mass));
-        if (kappa < 0.001) { f = Math.cos(alpha * a); }
-        else { f = Math.cos(alpha * a) * Math.cos(kappa * b) - ((alpha ** 2 + kappa ** 2) / (2 * alpha * kappa)) * Math.sin(alpha * a) * Math.sin(kappa * b); }
+        const kap = Math.sqrt((E - V0) / (HBAR2_OVER_2M / mass));
+        if (kap < 0.001) f = Math.cos(alp * a);
+        else f = Math.cos(alp * a) * Math.cos(kap * b) - ((alp ** 2 + kap ** 2) / (2 * alp * kap)) * Math.sin(alp * a) * Math.sin(kap * b);
       }
       points.push({ E, f: Math.max(-fRange, Math.min(fRange, f)) });
     }
 
-    // Color the curve by allowed/forbidden
     for (let i = 1; i < points.length; i++) {
       const p0 = points[i - 1], p1 = points[i];
       const inBand = Math.abs(p0.f) <= 1 && Math.abs(p1.f) <= 1;
@@ -518,7 +838,6 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
       ctx.stroke();
     }
 
-    // Shade allowed E ranges at bottom
     let inBand = false;
     let bandStart = 0;
     let bandNum = 1;
@@ -526,33 +845,30 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
       const isAllowed = Math.abs(points[i].f) <= 1;
       if (isAllowed && !inBand) { bandStart = points[i].E; inBand = true; }
       if (!isAllowed && inBand) {
-        // Draw band marker
-        const x1 = toX(bandStart), x2 = toX(points[i - 1].E);
+        const x1b = toX(bandStart), x2b = toX(points[i - 1].E);
         ctx.fillStyle = "rgba(34,197,94,0.15)";
-        ctx.fillRect(x1, pad.top, x2 - x1, ph);
-        // Band label at top
+        ctx.fillRect(x1b, pad.top, x2b - x1b, ph);
         ctx.fillStyle = "rgba(34,197,94,0.7)";
         ctx.font = "bold 9px 'JetBrains Mono', monospace";
         ctx.textAlign = "center";
-        ctx.fillText(`Band ${bandNum}`, (x1 + x2) / 2, pad.top + 12);
+        ctx.fillText(`Band ${bandNum}`, (x1b + x2b) / 2, pad.top + 12);
         ctx.font = "8px 'JetBrains Mono', monospace";
         ctx.fillStyle = "rgba(34,197,94,0.5)";
-        ctx.fillText(`${bandStart.toFixed(1)}–${points[i - 1].E.toFixed(1)} eV`, (x1 + x2) / 2, pad.top + 22);
+        ctx.fillText(`${bandStart.toFixed(1)}–${points[i - 1].E.toFixed(1)} eV`, (x1b + x2b) / 2, pad.top + 22);
         bandNum++;
         inBand = false;
       }
     }
     if (inBand) {
-      const x1 = toX(bandStart), x2 = toX(points[points.length - 1].E);
+      const x1b = toX(bandStart), x2b = toX(points[points.length - 1].E);
       ctx.fillStyle = "rgba(34,197,94,0.15)";
-      ctx.fillRect(x1, pad.top, x2 - x1, ph);
+      ctx.fillRect(x1b, pad.top, x2b - x1b, ph);
       ctx.fillStyle = "rgba(34,197,94,0.7)";
       ctx.font = "bold 9px 'JetBrains Mono', monospace";
       ctx.textAlign = "center";
-      ctx.fillText(`Band ${bandNum}`, (x1 + x2) / 2, pad.top + 12);
+      ctx.fillText(`Band ${bandNum}`, (x1b + x2b) / 2, pad.top + 12);
     }
 
-    // V0 line
     ctx.setLineDash([5, 3]);
     ctx.strokeStyle = "rgba(255,180,50,0.5)";
     ctx.lineWidth = 1;
@@ -563,14 +879,12 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     ctx.textAlign = "center";
     ctx.fillText(`V₀=${V0}`, toX(V0), pad.top + ph + 12);
 
-    // Current energy marker
     const eX = toX(energy);
     ctx.setLineDash([3, 3]);
     ctx.strokeStyle = "rgba(50,255,150,0.8)";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(eX, pad.top); ctx.lineTo(eX, pad.top + ph); ctx.stroke();
     ctx.setLineDash([]);
-    // Dot on curve
     const nearIdx = Math.round((energy / Emax) * numPts);
     if (nearIdx >= 0 && nearIdx < points.length) {
       const py = toY(points[nearIdx].f);
@@ -582,12 +896,10 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
       ctx.fillText(`E=${energy.toFixed(1)}, f=${points[nearIdx].f.toFixed(3)}`, eX + 12, py - 4);
     }
 
-    // Axes
     ctx.strokeStyle = "rgba(150,175,210,0.5)";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ph); ctx.lineTo(pad.left + pw, pad.top + ph); ctx.stroke();
 
-    // X axis ticks
     ctx.fillStyle = "rgba(170,190,220,0.7)";
     ctx.font = "9px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
@@ -595,7 +907,6 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
       ctx.fillText(e.toFixed(0), toX(e), pad.top + ph + 14);
     }
 
-    // Labels
     ctx.fillStyle = "rgba(170,190,220,0.8)";
     ctx.font = "italic 12px 'Georgia', serif";
     ctx.textAlign = "center";
@@ -606,7 +917,6 @@ function FofEPlot({ V0, a, b, mass, energy }: { V0: number; a: number; b: number
     ctx.fillText("f(E) = cos(kd)", 0, 0);
     ctx.restore();
 
-    // Title
     ctx.fillStyle = "rgba(230,240,255,0.9)";
     ctx.font = "bold 13px 'Inter', sans-serif";
     ctx.textAlign = "left";
@@ -635,7 +945,10 @@ export default function KronigPenneySimulator() {
   const [energy, setEnergy] = useState(2.5);
   const [animating, setAnimating] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
+  const [electricField, setElectricField] = useState(0.8);
+  const [showBlochOsc, setShowBlochOsc] = useState(true);
   const timeRef = useRef(0);
+  const blochTimeRef = useRef(0);
 
   const activeMaterial = MATERIALS_DB.find(m => m.key === selectedMaterial);
 
@@ -678,7 +991,6 @@ export default function KronigPenneySimulator() {
     ], "kp-chart");
   };
 
-  // Equation calculator state
   const [sinVal, setSinVal] = useState("");
   const [cosVal, setCosVal] = useState("");
   const [eqAlpha, setEqAlpha] = useState("");
@@ -715,6 +1027,71 @@ export default function KronigPenneySimulator() {
         <KronigPenneyCanvas V0={V0} a={a} b={b} mass={mass} energy={energy} animating={animating} timeRef={timeRef} />
       </GlassCard>
 
+      {/* Bloch Oscillation Visualizer */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <Zap size={14} className="text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Bloch Oscillation Visualizer</h3>
+              <p className="text-[10px] text-muted-foreground">Wave packet dynamics under applied electric field — real-time propagation</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={showBlochOsc ? "default" : "outline"}
+              onClick={() => setShowBlochOsc(!showBlochOsc)}
+              className="gap-1.5 text-xs h-7"
+            >
+              {showBlochOsc ? <Pause size={11} /> : <Play size={11} />}
+              {showBlochOsc ? "Hide" : "Show"}
+            </Button>
+          </div>
+        </div>
+
+        {showBlochOsc && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-3">
+                <BlochOscillationCanvas
+                  V0={V0} a={a} b={b} mass={mass} electricField={electricField}
+                  animating={animating} timeRef={blochTimeRef}
+                />
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-3">
+                  <SliderRow label="Electric Field F" value={electricField} min={0.1} max={3} step={0.1} onChange={setElectricField} unit=" V/Å" color="text-amber-400 bg-amber-400/10" />
+                  <div className="text-[10px] text-muted-foreground space-y-1.5 pt-2 border-t border-border/20">
+                    <p className="font-semibold text-foreground text-[11px]">Physics</p>
+                    <p>• Applied field tilts the periodic potential</p>
+                    <p>• Electron k increases linearly: k(t) = k₀ + eFt/ℏ</p>
+                    <p>• At BZ boundary (k = π/d), Bragg reflection → k wraps</p>
+                    <p>• Result: oscillatory motion in real space</p>
+                    <p>• Frequency: ω_B = eFd/ℏ</p>
+                    <p>• Period: T_B = 2πℏ/(eFd)</p>
+                  </div>
+                  <div className="rounded-md bg-amber-500/5 border border-amber-500/20 p-2">
+                    <p className="text-[9px] text-muted-foreground">Bloch Frequency</p>
+                    <p className="text-sm font-bold font-mono text-amber-400">
+                      ω_B = {(electricField * (a + b) * 0.5).toFixed(3)} <span className="text-[10px] text-muted-foreground">rad/s</span>
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-primary/5 border border-primary/20 p-2">
+                    <p className="text-[9px] text-muted-foreground">Oscillation Period</p>
+                    <p className="text-sm font-bold font-mono text-primary">
+                      T_B = {(electricField * (a + b) * 0.5 > 0.001 ? (2 * Math.PI / (electricField * (a + b) * 0.5)).toFixed(2) : "∞")} <span className="text-[10px] text-muted-foreground">s</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </GlassCard>
+
       {/* Equation Calculator */}
       <GlassCard className="p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -727,7 +1104,6 @@ export default function KronigPenneySimulator() {
           </div>
         </div>
 
-        {/* Full Equation Display */}
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-4">
           <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
             {energy < V0 ? "Below-Barrier (E < V₀) — Tunneling Regime" : "Above-Barrier (E > V₀) — Propagating Regime"}
@@ -748,58 +1124,35 @@ export default function KronigPenneySimulator() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Input Values */}
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-foreground">Input Parameters</p>
             <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">sin(αa)</label>
-                  <Input
-                    type="number" step="0.001" placeholder={Math.sin(equationResult.alpha * a).toFixed(4)}
-                    value={sinVal} onChange={e => setSinVal(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
+                  <Input type="number" step="0.001" placeholder={Math.sin(equationResult.alpha * a).toFixed(4)} value={sinVal} onChange={e => setSinVal(e.target.value)} className="h-8 text-xs font-mono" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">cos(αa)</label>
-                  <Input
-                    type="number" step="0.001" placeholder={Math.cos(equationResult.alpha * a).toFixed(4)}
-                    value={cosVal} onChange={e => setCosVal(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
+                  <Input type="number" step="0.001" placeholder={Math.cos(equationResult.alpha * a).toFixed(4)} value={cosVal} onChange={e => setCosVal(e.target.value)} className="h-8 text-xs font-mono" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">α (Å⁻¹)</label>
-                  <Input
-                    type="number" step="0.01" placeholder={equationResult.alpha.toFixed(4)}
-                    value={eqAlpha} onChange={e => setEqAlpha(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
+                  <Input type="number" step="0.01" placeholder={equationResult.alpha.toFixed(4)} value={eqAlpha} onChange={e => setEqAlpha(e.target.value)} className="h-8 text-xs font-mono" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground font-mono">{energy < V0 ? "β" : "κ"} (Å⁻¹)</label>
-                  <Input
-                    type="number" step="0.01" placeholder={equationResult.beta.toFixed(4)}
-                    value={eqBeta} onChange={e => setEqBeta(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
+                  <Input type="number" step="0.01" placeholder={equationResult.beta.toFixed(4)} value={eqBeta} onChange={e => setEqBeta(e.target.value)} className="h-8 text-xs font-mono" />
                 </div>
               </div>
-
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1 gap-1.5 text-xs h-8"
-                  onClick={() => {
-                    // Apply custom values to the main visualization
-                    if (eqAlpha) {
-                      const customAlpha = parseFloat(eqAlpha);
-                      const newE = customAlpha * customAlpha * (HBAR2_OVER_2M / mass);
-                      if (newE > 0 && newE < V0 * 3) setEnergy(parseFloat(newE.toFixed(2)));
-                    }
-                  }}
-                >
+                <Button size="sm" className="flex-1 gap-1.5 text-xs h-8" onClick={() => {
+                  if (eqAlpha) {
+                    const customAlpha = parseFloat(eqAlpha);
+                    const newE = customAlpha * customAlpha * (HBAR2_OVER_2M / mass);
+                    if (newE > 0 && newE < V0 * 3) setEnergy(parseFloat(newE.toFixed(2)));
+                  }
+                }}>
                   <Play size={11} /> Run Visualization
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs h-8 px-3" onClick={() => { setSinVal(""); setCosVal(""); setEqAlpha(""); setEqBeta(""); }}>
@@ -809,7 +1162,6 @@ export default function KronigPenneySimulator() {
             </div>
           </div>
 
-          {/* Computed Results */}
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-foreground">Evaluation Result</p>
             <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-2">
@@ -825,7 +1177,6 @@ export default function KronigPenneySimulator() {
                   </p>
                 </div>
               </div>
-
               {equationResult.allowed && (
                 <div className="rounded-md bg-amber-500/5 border border-amber-500/20 p-2.5">
                   <p className="text-[9px] text-muted-foreground">Bloch wavevector k</p>
@@ -838,7 +1189,6 @@ export default function KronigPenneySimulator() {
             </div>
           </div>
 
-          {/* Auto-computed Reference */}
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-foreground">Current System Values</p>
             <div className="rounded-lg border border-border/30 bg-background/50 p-3 space-y-2">
@@ -884,46 +1234,12 @@ export default function KronigPenneySimulator() {
           const kVal = allowed ? Math.acos(Math.max(-1, Math.min(1, fE))) / d : NaN;
 
           const steps = [
-            {
-              title: "Step 1 — Compute wave parameters",
-              content: `Given E = ${energy.toFixed(2)} eV, V₀ = ${V0.toFixed(2)} eV, m* = ${mass} mₑ, a = ${a} Å, b = ${b} Å`,
-              math: `α = √(2m*E / ℏ²) = √(${energy.toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${alpha.toFixed(4)} Å⁻¹`,
-            },
-            {
-              title: `Step 2 — Compute ${energy < V0 ? "decay" : "propagation"} constant`,
-              content: energy < V0 ? `Since E < V₀, we're in the tunneling regime` : `Since E > V₀, we're in the propagating regime`,
-              math: energy < V0
-                ? `β = √(2m*(V₀−E) / ℏ²) = √(${(V0 - energy).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹`
-                : `κ = √(2m*(E−V₀) / ℏ²) = √(${(energy - V0).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹`,
-            },
-            {
-              title: "Step 3 — Evaluate trigonometric / hyperbolic terms",
-              content: "Plug α and " + (energy < V0 ? "β" : "κ") + " into the equation components",
-              math: energy < V0
-                ? `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsinh(βb) = sinh(${(beta_val * b).toFixed(3)}) = ${Math.sinh(beta_val * b).toFixed(6)}\ncosh(βb) = cosh(${(beta_val * b).toFixed(3)}) = ${Math.cosh(beta_val * b).toFixed(6)}`
-                : `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsin(κb) = sin(${(beta_val * b).toFixed(3)}) = ${Math.sin(beta_val * b).toFixed(6)}\ncos(κb) = cos(${(beta_val * b).toFixed(3)}) = ${Math.cos(beta_val * b).toFixed(6)}`,
-            },
-            {
-              title: "Step 4 — Compute the prefactor",
-              content: "The coupling term between well and barrier wave parameters",
-              math: energy < V0
-                ? `(α² − β²) / (2αβ) = (${(alpha ** 2).toFixed(4)} − ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 - beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}`
-                : `(α² + κ²) / (2ακ) = (${(alpha ** 2).toFixed(4)} + ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 + beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}`,
-            },
-            {
-              title: "Step 5 — Evaluate f(E) = cos(kd)",
-              content: "Combine all terms to get the transcendental equation value",
-              math: `f(E) = ${fE.toFixed(6)}    →    |f(E)| = ${Math.abs(fE).toFixed(6)}`,
-            },
-            {
-              title: "Step 6 — Band determination",
-              content: allowed
-                ? `Since |f(E)| ≤ 1, this energy lies in an ALLOWED band. We can solve for k.`
-                : `Since |f(E)| > 1, this energy lies in a FORBIDDEN gap. No propagating Bloch states exist.`,
-              math: allowed
-                ? `k = arccos(f(E)) / d = arccos(${fE.toFixed(4)}) / ${d.toFixed(2)} = ${kVal!.toFixed(6)} Å⁻¹`
-                : `cos(kd) = ${fE.toFixed(4)} → No real k exists (band gap)`,
-            },
+            { title: "Step 1 — Compute wave parameters", content: `Given E = ${energy.toFixed(2)} eV, V₀ = ${V0.toFixed(2)} eV, m* = ${mass} mₑ, a = ${a} Å, b = ${b} Å`, math: `α = √(2m*E / ℏ²) = √(${energy.toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${alpha.toFixed(4)} Å⁻¹` },
+            { title: `Step 2 — Compute ${energy < V0 ? "decay" : "propagation"} constant`, content: energy < V0 ? `Since E < V₀, we're in the tunneling regime` : `Since E > V₀, we're in the propagating regime`, math: energy < V0 ? `β = √(2m*(V₀−E) / ℏ²) = √(${(V0 - energy).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹` : `κ = √(2m*(E−V₀) / ℏ²) = √(${(energy - V0).toFixed(2)} / ${(HBAR2_OVER_2M / mass).toFixed(3)}) = ${beta_val.toFixed(4)} Å⁻¹` },
+            { title: "Step 3 — Evaluate trigonometric / hyperbolic terms", content: "Plug α and " + (energy < V0 ? "β" : "κ") + " into the equation components", math: energy < V0 ? `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsinh(βb) = sinh(${(beta_val * b).toFixed(3)}) = ${Math.sinh(beta_val * b).toFixed(6)}\ncosh(βb) = cosh(${(beta_val * b).toFixed(3)}) = ${Math.cosh(beta_val * b).toFixed(6)}` : `sin(αa) = sin(${(alpha * a).toFixed(3)}) = ${sinAa.toFixed(6)}\ncos(αa) = cos(${(alpha * a).toFixed(3)}) = ${cosAa.toFixed(6)}\nsin(κb) = sin(${(beta_val * b).toFixed(3)}) = ${Math.sin(beta_val * b).toFixed(6)}\ncos(κb) = cos(${(beta_val * b).toFixed(3)}) = ${Math.cos(beta_val * b).toFixed(6)}` },
+            { title: "Step 4 — Compute the prefactor", content: "The coupling term between well and barrier wave parameters", math: energy < V0 ? `(α² − β²) / (2αβ) = (${(alpha ** 2).toFixed(4)} − ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 - beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}` : `(α² + κ²) / (2ακ) = (${(alpha ** 2).toFixed(4)} + ${(beta_val ** 2).toFixed(4)}) / (2 × ${alpha.toFixed(4)} × ${beta_val.toFixed(4)}) = ${((alpha ** 2 + beta_val ** 2) / (2 * alpha * beta_val)).toFixed(6)}` },
+            { title: "Step 5 — Evaluate f(E) = cos(kd)", content: "Combine all terms to get the transcendental equation value", math: `f(E) = ${fE.toFixed(6)}    →    |f(E)| = ${Math.abs(fE).toFixed(6)}` },
+            { title: "Step 6 — Band determination", content: allowed ? `Since |f(E)| ≤ 1, this energy lies in an ALLOWED band. We can solve for k.` : `Since |f(E)| > 1, this energy lies in a FORBIDDEN gap. No propagating Bloch states exist.`, math: allowed ? `k = arccos(f(E)) / d = arccos(${fE.toFixed(4)}) / ${d.toFixed(2)} = ${kVal!.toFixed(6)} Å⁻¹` : `cos(kd) = ${fE.toFixed(4)} → No real k exists (band gap)` },
           ];
 
           return (
@@ -943,8 +1259,6 @@ export default function KronigPenneySimulator() {
                   </div>
                 </motion.div>
               ))}
-
-              {/* Final verdict */}
               <div className={`rounded-xl p-4 border-2 mt-3 ${allowed ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}>
                 <p className={`text-sm font-bold ${allowed ? "text-emerald-400" : "text-destructive"}`}>
                   {allowed ? "✓ E = " + energy.toFixed(2) + " eV is in an ALLOWED band" : "✗ E = " + energy.toFixed(2) + " eV is in a FORBIDDEN gap"}
@@ -974,18 +1288,12 @@ export default function KronigPenneySimulator() {
         <GlassCard className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Parameters</h3>
-            <Button
-              size="sm"
-              variant={animating ? "default" : "outline"}
-              onClick={() => setAnimating(!animating)}
-              className="gap-1.5 text-xs h-7"
-            >
+            <Button size="sm" variant={animating ? "default" : "outline"} onClick={() => setAnimating(!animating)} className="gap-1.5 text-xs h-7">
               {animating ? <Pause size={11} /> : <Play size={11} />}
               {animating ? "Pause" : "Animate"}
             </Button>
           </div>
 
-          {/* Materials Database Dropdown */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
               <Database size={11} className="text-primary" /> Material Preset
@@ -1009,14 +1317,9 @@ export default function KronigPenneySimulator() {
             </Select>
           </div>
 
-          {/* Material comparison card */}
           {activeMaterial && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-lg border-2 p-3 space-y-2"
-              style={{ borderColor: `${activeMaterial.color}40`, backgroundColor: `${activeMaterial.color}08` }}
-            >
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="rounded-lg border-2 p-3 space-y-2" style={{ borderColor: `${activeMaterial.color}40`, backgroundColor: `${activeMaterial.color}08` }}>
               <div className="flex items-center gap-2">
                 <span className="text-lg">{activeMaterial.icon}</span>
                 <div>
@@ -1044,8 +1347,6 @@ export default function KronigPenneySimulator() {
                   <p className="font-bold text-foreground">{activeMaterial.dielectricConstant}</p>
                 </div>
               </div>
-
-              {/* Simulated vs Experimental comparison */}
               {result.bandGaps.length > 0 && (
                 <div className="rounded-lg bg-background/60 border border-border/30 p-2 mt-1">
                   <p className="text-[9px] font-semibold text-foreground mb-1 flex items-center gap-1">
@@ -1075,7 +1376,6 @@ export default function KronigPenneySimulator() {
           <SliderRow label="E (Particle Energy)" value={energy} min={0.1} max={V0 * 2} step={0.1} onChange={setEnergy} unit=" eV" color="text-green-400 bg-green-400/10" />
           <SliderRow label="m* (Effective Mass)" value={mass} min={0.1} max={3} step={0.1} onChange={v => { setMass(v); setSelectedMaterial(""); }} unit=" mₑ" />
 
-          {/* Status */}
           <div className={`rounded-lg p-3 border ${isTunneling ? "border-yellow-500/20 bg-yellow-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
             <p className={`text-xs font-semibold ${isTunneling ? "text-yellow-400" : "text-emerald-400"}`}>
               {isTunneling ? "⚡ Tunneling Regime" : "◈ Propagating Regime"}
