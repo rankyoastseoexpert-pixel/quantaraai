@@ -8,6 +8,8 @@ import { solveKronigPenney } from "@/lib/solidStateEngine";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import { MATERIALS_DB, type MaterialData } from "@/lib/materialsDatabase";
 import DerivationBlock from "./DerivationBlock";
+import WannierStarkLadder from "./WannierStarkLadder";
+import BandComparisonPanel from "./BandComparisonPanel";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from "recharts";
 import { Download, FileText, Play, Pause, Calculator, Database, Beaker, Zap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -1457,6 +1459,12 @@ export default function KronigPenneySimulator() {
           </div>
         </GlassCard>
       )}
+
+      {/* Wannier-Stark Ladder */}
+      <WannierStarkLadder V0={V0} a={a} b={b} />
+
+      {/* Side-by-Side Material Comparison */}
+      <BandComparisonPanel />
 
       {/* Derivation */}
       <DerivationBlock title="Kronig–Penney Mathematical Derivation" steps={KP_DERIVATION} />
