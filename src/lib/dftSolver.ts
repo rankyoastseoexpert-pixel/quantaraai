@@ -767,3 +767,93 @@ export function compute1DDensityCut(grid: number[][][], plane: "XY" | "XZ" | "YZ
   }
   return points;
 }
+
+// ─── Electron Density Isosurface Grid (Total Charge Density |ψ|²) ───
+
+export function generateChargeDensityGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const nOcc = Math.ceil(nElectrons / 2);
+  const grid: number[][][] = [];
+  for (let ix = 0; ix < gridSize; ix++) {
+    grid[ix] = []; const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      grid[ix][iy] = []; const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let rho = 0;
+        for (let k = 0; k < nOcc && k < orbitals.length; k++) {
+          const occ = k < nOcc - 1 ? 2 : (nElectrons % 2 === 0 ? 2 : 1);
+          let psi = 0;
+          for (let a = 0; a < atoms.length; a++) { const r = Math.sqrt((x - atoms[a].x) ** 2 + (y - atoms[a].y) ** 2 + (z - atoms[a].z) ** 2); psi += (orbitals[k][a] || 0) * Math.exp(-zeta * r); }
+          rho += occ * psi * psi;
+        }
+        grid[ix][iy][iz] = rho;
+      }
+    }
+  }
+  return grid;
+}
+
+// ─── Electron Density Difference (ρ_total − Σρ_atoms) ───
+
+export function generateDensityDifferenceGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  const totalDensity = generateChargeDensityGrid(atoms, orbitals, nElectrons, element, gridSize);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const params = ELEMENT_DATA[element];
+  for (let ix = 0; ix < gridSize; ix++) {
+    const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let atomicDensity = 0;
+        for (const a of atoms) { const r = Math.sqrt((x - a.x) ** 2 + (y - a.y) ** 2 + (z - a.z) ** 2); atomicDensity += (zeta ** 3 / Math.PI) * Math.exp(-2 * zeta * r) * params.valenceElectrons; }
+        totalDensity[ix][iy][iz] -= atomicDensity;
+      }
+    }
+  }
+  return totalDensity;
+}
+
+// ─── Electrostatic Potential Grid ───
+
+export function generateESPGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const params = ELEMENT_DATA[element];
+  const nOcc = Math.ceil(nElectrons / 2);
+  const grid: number[][][] = [];
+  for (let ix = 0; ix < gridSize; ix++) {
+    grid[ix] = []; const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      grid[ix][iy] = []; const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let Vnuc = 0;
+        for (const a of atoms) { const r = Math.sqrt((x - a.x) ** 2 + (y - a.y) ** 2 + (z - a.z) ** 2) + 0.01; Vnuc += -params.Z / r; }
+        let rho = 0;
+        for (let k = 0; k < nOcc && k < orbitals.length; k++) {
+          let psi = 0;
+          for (let a = 0; a < atoms.length; a++) { const r = Math.sqrt((x - atoms[a].x) ** 2 + (y - atoms[a].y) ** 2 + (z - atoms[a].z) ** 2); psi += (orbitals[k][a] || 0) * Math.exp(-zeta * r); }
+          rho += 2 * psi * psi;
+        }
+        grid[ix][iy][iz] = Vnuc + rho * 0.5;
+      }
+    }
+  }
+  return grid;
+}
