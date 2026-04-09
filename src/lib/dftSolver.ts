@@ -10,7 +10,7 @@ import { eigs, matrix } from "mathjs";
 const EV_PER_HARTREE = 27.2114;
 
 // ─── Element Parameters ───
-export type ElementType = "Ag" | "Au" | "Cu" | "Al" | "Pt";
+export type ElementType = "Ag" | "Au" | "Cu" | "Al" | "Pt" | "Fe" | "Ti" | "Ni" | "Si" | "C" | "N" | "O";
 export type SymmetryType = "FCC" | "BCC" | "SC";
 export type FunctionalType = "LDA" | "GGA";
 
@@ -32,6 +32,13 @@ export const ELEMENT_DATA: Record<ElementType, ElementParams> = {
   Cu: { Z: 29, valenceElectrons: 1, onsite: -4.80, hopping: -1.40, cutoff: 2.8, latticeConst: 2.56, zetaSlater: 1.5, color: "hsl(20,70%,55%)", covalentRadius: 1.32 },
   Al: { Z: 13, valenceElectrons: 3, onsite: -3.20, hopping: -1.80, cutoff: 3.3, latticeConst: 2.86, zetaSlater: 1.2, color: "hsl(200,10%,65%)", covalentRadius: 1.21 },
   Pt: { Z: 78, valenceElectrons: 1, onsite: -6.10, hopping: -1.50, cutoff: 3.0, latticeConst: 2.77, zetaSlater: 1.9, color: "hsl(210,5%,60%)", covalentRadius: 1.36 },
+  Fe: { Z: 26, valenceElectrons: 2, onsite: -4.50, hopping: -1.35, cutoff: 2.9, latticeConst: 2.48, zetaSlater: 1.7, color: "hsl(15,50%,45%)", covalentRadius: 1.32 },
+  Ti: { Z: 22, valenceElectrons: 2, onsite: -3.80, hopping: -1.60, cutoff: 3.1, latticeConst: 2.95, zetaSlater: 1.3, color: "hsl(200,30%,55%)", covalentRadius: 1.60 },
+  Ni: { Z: 28, valenceElectrons: 2, onsite: -5.00, hopping: -1.45, cutoff: 2.7, latticeConst: 2.49, zetaSlater: 1.65, color: "hsl(120,10%,55%)", covalentRadius: 1.24 },
+  Si: { Z: 14, valenceElectrons: 4, onsite: -4.20, hopping: -2.10, cutoff: 2.8, latticeConst: 2.35, zetaSlater: 1.38, color: "hsl(220,60%,55%)", covalentRadius: 1.11 },
+  C:  { Z: 6, valenceElectrons: 4, onsite: -6.50, hopping: -2.70, cutoff: 2.0, latticeConst: 1.54, zetaSlater: 1.57, color: "hsl(0,0%,30%)", covalentRadius: 0.77 },
+  N:  { Z: 7, valenceElectrons: 5, onsite: -7.30, hopping: -2.40, cutoff: 1.9, latticeConst: 1.45, zetaSlater: 1.95, color: "hsl(210,80%,55%)", covalentRadius: 0.75 },
+  O:  { Z: 8, valenceElectrons: 6, onsite: -8.50, hopping: -2.20, cutoff: 1.8, latticeConst: 1.21, zetaSlater: 2.28, color: "hsl(0,80%,50%)", covalentRadius: 0.73 },
 };
 
 // ─── Atom & Result Types ───
@@ -759,4 +766,94 @@ export function compute1DDensityCut(grid: number[][][], plane: "XY" | "XZ" | "YZ
     points.push({ position: parseFloat(((i / (size - 1)) * 10 - 5).toFixed(3)), density: parseFloat(val.toFixed(6)) });
   }
   return points;
+}
+
+// ─── Electron Density Isosurface Grid (Total Charge Density |ψ|²) ───
+
+export function generateChargeDensityGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const nOcc = Math.ceil(nElectrons / 2);
+  const grid: number[][][] = [];
+  for (let ix = 0; ix < gridSize; ix++) {
+    grid[ix] = []; const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      grid[ix][iy] = []; const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let rho = 0;
+        for (let k = 0; k < nOcc && k < orbitals.length; k++) {
+          const occ = k < nOcc - 1 ? 2 : (nElectrons % 2 === 0 ? 2 : 1);
+          let psi = 0;
+          for (let a = 0; a < atoms.length; a++) { const r = Math.sqrt((x - atoms[a].x) ** 2 + (y - atoms[a].y) ** 2 + (z - atoms[a].z) ** 2); psi += (orbitals[k][a] || 0) * Math.exp(-zeta * r); }
+          rho += occ * psi * psi;
+        }
+        grid[ix][iy][iz] = rho;
+      }
+    }
+  }
+  return grid;
+}
+
+// ─── Electron Density Difference (ρ_total − Σρ_atoms) ───
+
+export function generateDensityDifferenceGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  const totalDensity = generateChargeDensityGrid(atoms, orbitals, nElectrons, element, gridSize);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const params = ELEMENT_DATA[element];
+  for (let ix = 0; ix < gridSize; ix++) {
+    const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let atomicDensity = 0;
+        for (const a of atoms) { const r = Math.sqrt((x - a.x) ** 2 + (y - a.y) ** 2 + (z - a.z) ** 2); atomicDensity += (zeta ** 3 / Math.PI) * Math.exp(-2 * zeta * r) * params.valenceElectrons; }
+        totalDensity[ix][iy][iz] -= atomicDensity;
+      }
+    }
+  }
+  return totalDensity;
+}
+
+// ─── Electrostatic Potential Grid ───
+
+export function generateESPGrid(
+  atoms: Atom3D[], orbitals: number[][], nElectrons: number, element: ElementType, gridSize: number = 28
+): number[][][] {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const a of atoms) { minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minY = Math.min(minY, a.y); maxY = Math.max(maxY, a.y); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z); }
+  const pad = 3.0; minX -= pad; maxX += pad; minY -= pad; maxY += pad; minZ -= pad; maxZ += pad;
+  const zeta = ELEMENT_DATA[element].zetaSlater;
+  const params = ELEMENT_DATA[element];
+  const nOcc = Math.ceil(nElectrons / 2);
+  const grid: number[][][] = [];
+  for (let ix = 0; ix < gridSize; ix++) {
+    grid[ix] = []; const x = minX + (ix / (gridSize - 1)) * (maxX - minX);
+    for (let iy = 0; iy < gridSize; iy++) {
+      grid[ix][iy] = []; const y = minY + (iy / (gridSize - 1)) * (maxY - minY);
+      for (let iz = 0; iz < gridSize; iz++) {
+        const z = minZ + (iz / (gridSize - 1)) * (maxZ - minZ);
+        let Vnuc = 0;
+        for (const a of atoms) { const r = Math.sqrt((x - a.x) ** 2 + (y - a.y) ** 2 + (z - a.z) ** 2) + 0.01; Vnuc += -params.Z / r; }
+        let rho = 0;
+        for (let k = 0; k < nOcc && k < orbitals.length; k++) {
+          let psi = 0;
+          for (let a = 0; a < atoms.length; a++) { const r = Math.sqrt((x - atoms[a].x) ** 2 + (y - atoms[a].y) ** 2 + (z - atoms[a].z) ** 2); psi += (orbitals[k][a] || 0) * Math.exp(-zeta * r); }
+          rho += 2 * psi * psi;
+        }
+        grid[ix][iy][iz] = Vnuc + rho * 0.5;
+      }
+    }
+  }
+  return grid;
 }

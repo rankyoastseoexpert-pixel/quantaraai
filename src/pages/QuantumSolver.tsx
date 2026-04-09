@@ -6,6 +6,7 @@ import QuantumDerivationView from "@/components/QuantumDerivationView";
 import LaTeXEquationEditor from "@/components/LaTeXEquationEditor";
 import OrbitalViewer3D from "@/components/quantum-solver/OrbitalViewer3D";
 import AnalysisGraphs from "@/components/quantum-solver/AnalysisGraphs";
+import AdvancedVisualizations from "@/components/quantum-solver/AdvancedVisualizations";
 import SCFControlPanel from "@/components/quantum-solver/SCFControlPanel";
 import DensityHeatmap from "@/components/quantum-solver/DensityHeatmap";
 import EnergyLevelDiagram from "@/components/quantum-solver/EnergyLevelDiagram";
@@ -301,6 +302,8 @@ const QuantumSolver = () => {
 
                 {scfResult && <AnalysisGraphs result={scfResult} />}
 
+                {scfResult && <AdvancedVisualizations result={scfResult} />}
+
                 {/* Vibrational Modes & Geometry Optimization */}
                 {scfResult && (
                   <div className="grid md:grid-cols-2 gap-4">
@@ -370,12 +373,12 @@ const QuantumSolver = () => {
                       <FlaskConical className="h-16 w-16 text-primary/20 mx-auto mb-4" strokeWidth={1} />
                       <h3 className="text-sm font-semibold text-foreground mb-2">Multi-Element Quantum Cluster Solver</h3>
                       <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4">
-                        Select an element (Ag, Au, Cu, Al, Pt), configure the cluster geometry, and run the SCF solver.
+                        Select an element (Ag, Au, Cu, Al, Pt, Fe, Ti, Ni, Si, C, N, O), configure the cluster geometry, and run the SCF solver.
                         Features LDA/GGA functionals, Pulay mixing, 3D orbitals, density heatmaps, and vibrational analysis.
                       </p>
                       <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto text-[10px]">
-                        {[
-                          ["5 Elements", "Ag, Au, Cu, Al, Pt"],
+                       {[
+                          ["12 Elements", "Ag, Au, Cu, Al, Pt, Fe..."],
                           ["LDA & GGA", "Slater + VWN / PBE"],
                           ["3D Orbitals", "|ψ|² volumetric cloud"],
                           ["Density Heatmap", "2D cross-section view"],

@@ -22,7 +22,7 @@ interface Props {
   onToggleNegative: (v: boolean) => void;
 }
 
-const ELEMENTS: ElementType[] = ["Ag", "Au", "Cu", "Al", "Pt"];
+const ELEMENTS: ElementType[] = ["Ag", "Au", "Cu", "Al", "Pt", "Fe", "Ti", "Ni", "Si", "C", "N", "O"];
 
 const SCFControlPanel = ({
   onRunSolver, isRunning, result,
@@ -55,17 +55,17 @@ const SCFControlPanel = ({
           {/* Element Selection */}
           <div>
             <label className="text-[10px] text-muted-foreground mb-1 block">Element</label>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {ELEMENTS.map(el => (
                 <Button
                   key={el}
                   size="sm"
                   variant={element === el ? "default" : "outline"}
-                  className={`flex-1 h-7 text-[10px] ${element === el ? "bg-primary text-primary-foreground" : "border-border"}`}
+                  className={`h-7 text-[10px] ${element === el ? "bg-primary text-primary-foreground" : "border-border"}`}
                   onClick={() => handleElementChange(el)}
                 >
                   {el}
-                  <span className="text-[7px] ml-0.5 opacity-60">({ELEMENT_DATA[el].Z})</span>
+                  <span className="text-[6px] ml-0.5 opacity-60">({ELEMENT_DATA[el].Z})</span>
                 </Button>
               ))}
             </div>
