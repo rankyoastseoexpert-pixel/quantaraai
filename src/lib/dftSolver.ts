@@ -10,7 +10,7 @@ import { eigs, matrix } from "mathjs";
 const EV_PER_HARTREE = 27.2114;
 
 // ─── Element Parameters ───
-export type ElementType = "Ag" | "Au" | "Cu" | "Al" | "Pt";
+export type ElementType = "Ag" | "Au" | "Cu" | "Al" | "Pt" | "Fe" | "Ti" | "Ni" | "Si" | "C" | "N" | "O";
 export type SymmetryType = "FCC" | "BCC" | "SC";
 export type FunctionalType = "LDA" | "GGA";
 
@@ -32,6 +32,13 @@ export const ELEMENT_DATA: Record<ElementType, ElementParams> = {
   Cu: { Z: 29, valenceElectrons: 1, onsite: -4.80, hopping: -1.40, cutoff: 2.8, latticeConst: 2.56, zetaSlater: 1.5, color: "hsl(20,70%,55%)", covalentRadius: 1.32 },
   Al: { Z: 13, valenceElectrons: 3, onsite: -3.20, hopping: -1.80, cutoff: 3.3, latticeConst: 2.86, zetaSlater: 1.2, color: "hsl(200,10%,65%)", covalentRadius: 1.21 },
   Pt: { Z: 78, valenceElectrons: 1, onsite: -6.10, hopping: -1.50, cutoff: 3.0, latticeConst: 2.77, zetaSlater: 1.9, color: "hsl(210,5%,60%)", covalentRadius: 1.36 },
+  Fe: { Z: 26, valenceElectrons: 2, onsite: -4.50, hopping: -1.35, cutoff: 2.9, latticeConst: 2.48, zetaSlater: 1.7, color: "hsl(15,50%,45%)", covalentRadius: 1.32 },
+  Ti: { Z: 22, valenceElectrons: 2, onsite: -3.80, hopping: -1.60, cutoff: 3.1, latticeConst: 2.95, zetaSlater: 1.3, color: "hsl(200,30%,55%)", covalentRadius: 1.60 },
+  Ni: { Z: 28, valenceElectrons: 2, onsite: -5.00, hopping: -1.45, cutoff: 2.7, latticeConst: 2.49, zetaSlater: 1.65, color: "hsl(120,10%,55%)", covalentRadius: 1.24 },
+  Si: { Z: 14, valenceElectrons: 4, onsite: -4.20, hopping: -2.10, cutoff: 2.8, latticeConst: 2.35, zetaSlater: 1.38, color: "hsl(220,60%,55%)", covalentRadius: 1.11 },
+  C:  { Z: 6, valenceElectrons: 4, onsite: -6.50, hopping: -2.70, cutoff: 2.0, latticeConst: 1.54, zetaSlater: 1.57, color: "hsl(0,0%,30%)", covalentRadius: 0.77 },
+  N:  { Z: 7, valenceElectrons: 5, onsite: -7.30, hopping: -2.40, cutoff: 1.9, latticeConst: 1.45, zetaSlater: 1.95, color: "hsl(210,80%,55%)", covalentRadius: 0.75 },
+  O:  { Z: 8, valenceElectrons: 6, onsite: -8.50, hopping: -2.20, cutoff: 1.8, latticeConst: 1.21, zetaSlater: 2.28, color: "hsl(0,80%,50%)", covalentRadius: 0.73 },
 };
 
 // ─── Atom & Result Types ───
