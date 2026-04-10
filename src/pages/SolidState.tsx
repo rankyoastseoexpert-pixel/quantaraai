@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from "react";
+import SEOHead from "@/components/SEOHead";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { motion } from "framer-motion";
@@ -51,6 +52,12 @@ export default function SolidState() {
 
   return (
     <PageLayout>
+      <SEOHead
+        title="Solid State Physics Simulator – Band Structure & Phonons | Quantara AI"
+        description="Interactive solid-state physics simulator with band structure diagrams, Kronig-Penney model, phonon dispersion, Brillouin zone visualization, and Bloch oscillations."
+        canonical="https://www.quantaraai.site/solid-state"
+        keywords="solid state physics simulator, band structure calculator, Kronig-Penney model, phonon dispersion, Brillouin zone, Bloch oscillation"
+      />
       <div className="flex min-h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <motion.aside
