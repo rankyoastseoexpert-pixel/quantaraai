@@ -1,4 +1,5 @@
 import { motion, useScroll, useTransform } from "framer-motion";
+import SEOHead from "@/components/SEOHead";
 import { Link } from "react-router-dom";
 import { useRef, useState, lazy, Suspense } from "react";
 import PageLayout from "@/components/PageLayout";
@@ -129,6 +130,12 @@ const Index = () => {
 
   return (
     <PageLayout>
+      <SEOHead
+        title="Quantara AI – Free Quantum & Differential Equation Solver"
+        description="Solve quantum equations, differential equations, and wave equations step-by-step with interactive 3D visualizations, DFT/SCF solver, and LaTeX editor. 100% free."
+        canonical="https://www.quantaraai.site/"
+        keywords="quantum equation solver, wave equation solver, quantum physics calculator, differential equation solver online free, Schrödinger equation solver"
+      />
       <ScienceBackground />
       <FloatingScientificModels />
 
