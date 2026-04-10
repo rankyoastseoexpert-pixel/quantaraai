@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import SEOHead from "@/components/SEOHead";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,12 @@ const GraphGenerator = () => {
 
   return (
     <PageLayout>
+      <SEOHead
+        title="Scientific Graph Generator – Plot Equations Online | Quantara AI"
+        description="Free scientific graph generator for plotting mathematical functions, quantum wavefunctions, and physics equations with interactive controls and high-resolution export."
+        canonical="https://www.quantaraai.site/graph"
+        keywords="scientific graph generator, plot equations online, math function plotter, wavefunction graph, physics equation plotter"
+      />
       <div className="container px-4 py-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2">

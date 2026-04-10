@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
+import SEOHead from "@/components/SEOHead";
 import PageLayout from "@/components/PageLayout";
 import ScienceBackground from "@/components/ScienceBackground";
 import SimulationControls from "@/components/quantum-lab/SimulationControls";
@@ -256,6 +257,12 @@ const QuantumLab = () => {
 
   return (
     <PageLayout>
+      <SEOHead
+        title="Quantum Lab – Interactive Wavefunction Simulator | Quantara AI"
+        description="Simulate quantum wavefunctions in real-time with interactive potentials, time evolution, probability density plots, and energy spectrum analysis. Free quantum mechanics lab."
+        canonical="https://www.quantaraai.site/lab"
+        keywords="quantum simulator online, wavefunction simulator, quantum mechanics lab, Schrödinger equation simulation, quantum physics tool"
+      />
       <ScienceBackground />
       <div className="container px-4 py-8 relative z-10">
         {/* Header */}

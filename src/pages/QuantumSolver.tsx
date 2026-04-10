@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import PageLayout from "@/components/PageLayout";
+import SEOHead from "@/components/SEOHead";
 import GlassCard from "@/components/GlassCard";
 import ScienceBackground from "@/components/ScienceBackground";
 import QuantumDerivationView from "@/components/QuantumDerivationView";
@@ -224,6 +225,12 @@ const QuantumSolver = () => {
 
   return (
     <PageLayout>
+      <SEOHead
+        title="DFT/SCF Quantum Solver – Molecular Orbital Calculator | Quantara AI"
+        description="Free DFT and SCF quantum solver with HOMO/LUMO visualization, charge density isosurfaces, electrostatic potential mapping, and energy level diagrams for 12+ elements."
+        canonical="https://www.quantaraai.site/quantum"
+        keywords="DFT solver online, SCF calculation, molecular orbital calculator, HOMO LUMO visualization, quantum chemistry solver, charge density, electrostatic potential"
+      />
       <ScienceBackground />
       <div className="container px-4 py-12 relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
