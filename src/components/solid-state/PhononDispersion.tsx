@@ -4,6 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { exportChartAsPDF } from "@/lib/pdfExport";
 import DerivationBlock from "./DerivationBlock";
+import PhononModeVisualizer from "./PhononModeVisualizer";
 import { Download, FileText, AudioWaveform, Waves } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -533,6 +534,9 @@ export default function PhononDispersion() {
           </motion.div>
         ))}
       </div>
+
+      {/* Animated Phonon Mode Visualizer */}
+      <PhononModeVisualizer M1={M1} M2={M2} kSpring={kSpring} latticeA={latticeA} />
 
       <DerivationBlock title="Phonon Dispersion Derivation" steps={PHONON_DERIVATION} />
     </div>
