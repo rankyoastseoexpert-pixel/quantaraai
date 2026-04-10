@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SEOHead from "@/components/SEOHead";
 import LaTeXEquationEditor from "@/components/LaTeXEquationEditor";
 import PageLayout from "@/components/PageLayout";
 import GlassCard from "@/components/GlassCard";
@@ -1605,7 +1606,105 @@ const EquationSolver = () => {
             </GlassCard>
           </TabsContent>
         </Tabs>
+
+        {/* SEO Content Section */}
+        <section className="mt-12 space-y-8 max-w-4xl mx-auto">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Free Online Quantum & Differential Equation Solver</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Quantara AI's Equation Solver is a research-grade scientific calculator that provides step-by-step solutions 
+              for differential equations, wave equations, quantum mechanics problems, and linear algebra systems. Whether you're 
+              solving the Schrödinger equation, computing eigenvalues of a Hamiltonian matrix, or working through a Bessel 
+              differential equation, our solver shows every mathematical step with detailed explanations.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Supported Equation Types</h2>
+            <div className="grid sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Ordinary Differential Equations</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>First-order linear ODEs with integrating factors</li>
+                  <li>Second-order constant coefficient ODEs</li>
+                  <li>Legendre, Bessel, and Hermite equations</li>
+                  <li>Frobenius method for singular points</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Partial Differential Equations</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Heat equation (∂u/∂t = α∇²u)</li>
+                  <li>Wave equation (∂²u/∂t² = c²∇²u)</li>
+                  <li>Laplace and Helmholtz equations</li>
+                  <li>Schrödinger equation (time-dependent & independent)</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Linear Algebra</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Systems up to 4×4 via Gaussian elimination</li>
+                  <li>Determinant, inverse, eigenvalue computation</li>
+                  <li>Matrix diagonalization and Hermitian checks</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Calculus & Derivatives</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Symbolic differentiation with chain/product rules</li>
+                  <li>Integral presets (Gaussian, Fourier, Laplace)</li>
+                  <li>Multi-variable derivative detection</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-4">How to Use the Equation Solver</h2>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
+              <li><strong className="text-foreground">Choose your equation type</strong> — Select from Differential Equations, Linear Systems, Derivatives, or Matrix Operations tabs.</li>
+              <li><strong className="text-foreground">Enter your equation</strong> — Type directly or select from physics presets including Maxwell's equations, Schrödinger equation, and more.</li>
+              <li><strong className="text-foreground">View step-by-step solution</strong> — Each step is explained with mathematical reasoning, from classification through to the final answer.</li>
+              <li><strong className="text-foreground">Visualize results</strong> — Interactive graphs show solution curves, eigenvalue spectra, and wavefunction plots.</li>
+              <li><strong className="text-foreground">Export your work</strong> — Download solutions as PDF or high-resolution images for reports and assignments.</li>
+            </ol>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                { q: "Is this equation solver really free?", a: "Yes, 100% free. All features including step-by-step solutions, graph generation, quantum simulations, and PDF exports are available at no cost with no signup required." },
+                { q: "Can I solve the Schrödinger equation with this tool?", a: "Absolutely. Quantara AI solves both the time-dependent Schrödinger equation (iℏ∂ψ/∂t = Ĥψ) and the time-independent form (Ĥψ = Eψ) with full step-by-step derivations and wavefunction visualizations." },
+                { q: "What variables does the solver support?", a: "The solver auto-detects any symbolic variable including x, y, z, t, r, θ, and Greek letters. It handles multi-variable systems and automatically identifies unknowns." },
+                { q: "Can I use this for physics homework and research?", a: "Yes. Quantara AI is designed for students, researchers, and educators. Solutions follow rigorous mathematical methods used in university-level physics and engineering courses." },
+                { q: "How accurate are the solutions?", a: "All symbolic solutions use validated mathematical methods (Frobenius, separation of variables, Gaussian elimination with pivoting). Numerical solvers use SCF convergence with Pulay mixing for research-grade accuracy." },
+              ].map(({ q, a }) => (
+                <GlassCard key={q} className="!p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-1">{q}</h3>
+                  <p className="text-xs text-muted-foreground">{a}</p>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
+      <SEOHead
+        title="Quantum Equation Solver – Step-by-Step | Quantara AI"
+        description="Free online quantum equation solver with step-by-step solutions for differential equations, wave equations, Schrödinger equation, and linear systems. Interactive graphs and PDF export."
+        canonical="https://www.quantaraai.site/solver"
+        keywords="quantum equation solver, wave equation solver, differential equation calculator, Schrödinger equation solver, physics calculator, step-by-step math solver, ODE solver online free"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "Quantara AI Equation Solver",
+          "applicationCategory": "Scientific Tool",
+          "operatingSystem": "Web",
+          "url": "https://www.quantaraai.site/solver",
+          "description": "Step-by-step quantum and differential equation solver with interactive visualizations",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        }}
+      />
     </PageLayout>
   );
 };
